@@ -42,10 +42,10 @@ export function RequestsWorkspace() {
 
 export function ProjectsWorkspace() {
   const columns: Array<{ cards: string[]; title: string }> = [
-    { title: "New", cards: ["Summer Campaign", "Digital Creative Project"] },
-    { title: "In progress", cards: ["3D Billboard", "New Launch", "Retail Toolkit"] },
-    { title: "Client review", cards: ["Coca-Cola Proofing", "OOH Adaptation"] },
-    { title: "Delivered", cards: ["Fashion Week", "Promo Burger"] },
+    { title: "New", cards: ["Creative Brief", "Delivery List"] },
+    { title: "In progress", cards: [campaign.campaign, "Landing Page", "15s Video"] },
+    { title: "Client review", cards: ["3D Digital Banner", "Final Approval"] },
+    { title: "Delivered", cards: ["Estimate / Budget"] },
   ];
 
   return (
@@ -137,8 +137,8 @@ export function AgencyProfitabilityWorkspace() {
       <div className="workspace-profitability">
         <div className="profit-mini-cards">
           <article><small>Agency margin</small><strong>38%</strong></article>
-          <article><small>Revenue forecast</small><strong>GBP 1.42m</strong></article>
-          <article><small>Billing remaining</small><strong>GBP 312k</strong></article>
+          <article><small>Revenue forecast</small><strong>€1.42m</strong></article>
+          <article><small>Billing remaining</small><strong>€312k</strong></article>
         </div>
         <WorkspaceListWithAnalytics compact charts={profitAnalytics} filterLabel="Period" />
         <ListTable groups={profitabilityGroups} />
@@ -224,12 +224,9 @@ const projectAssets = {
 };
 
 function projectClientFor(card: string) {
-  if (card.includes("Coca") || card.includes("Summer")) return campaign.client;
-  if (card.includes("Billboard")) return "Samsung";
-  if (card.includes("Fashion")) return "Nike";
-  if (card.includes("Burger")) return "McDonald's";
   if (card.includes("Launch")) return "L'Oreal";
-  return "HP";
+  if (card.includes("Billboard")) return "Samsung";
+  return campaign.client;
 }
 
 const jobAnalytics: WorkspaceAnalytics = [
@@ -290,16 +287,17 @@ const agencyJobGroups = [
     label: "To approve (4)",
     tone: "red",
     rows: [
-      { title: "Coca-Cola budget confirmation", image: clientAssets.cocaCola, type: "Job", company: "Coca-Cola", department: "Account", classification: "Summer Campaign", date: "04 Jun 2026 12", priority: "High" as const },
-      { title: "Retail scope validation", image: projectAssets.retail, type: "Job", company: "Coca-Cola", department: "Production", classification: "Retail Toolkit", date: "06 Jun 2026 15", priority: "Medium" as const },
+      { title: "Estimate / Budget approval", image: clientAssets.cocaCola, type: "Job", company: "Coca-Cola", department: "Account", classification: "€15,000", date: "04 Jun 2026 12", priority: "High" as const },
+      { title: "Client Request / Brief review", image: clientAssets.cocaCola, type: "Job", company: "Coca-Cola", department: "Creative", classification: campaign.campaign, date: "06 Jun 2026 15", priority: "Medium" as const },
     ],
   },
   {
     label: "In progress (8)",
     tone: "blue",
     rows: [
-      { title: "3D Billboard", image: clientAssets.samsung, type: "Job", company: "Samsung", department: "Design", classification: "Outdoor activation", date: "12 Jun 2026 18", priority: "Medium" as const },
-      { title: "Summer Campaign", image: clientAssets.cocaCola, type: "Job", company: "Coca-Cola", department: "Creative Services", classification: "Summer Campaign", date: "18 Jun 2026 18", priority: "High" as const },
+      { title: "Landing Page", image: projectAssets.retail, type: "Deliverable", company: "Coca-Cola", department: "Design", classification: "Website", date: "18 Jun 2026 18", priority: "High" as const },
+      { title: "15s Video", image: projectAssets.motion, type: "Deliverable", company: "Coca-Cola", department: "Video", classification: "Video", date: "20 Jun 2026 18", priority: "High" as const },
+      { title: "3D Digital Banner", image: projectAssets.billboard, type: "Deliverable", company: "Coca-Cola", department: "Design", classification: "3D Banner", date: "21 Jun 2026 18", priority: "Medium" as const },
       { title: "New Launch", image: clientAssets.loreal, type: "Job", company: "L'Oreal", department: "Strategy", classification: "Product launch", date: "22 Jun 2026 18", priority: "Low" as const },
     ],
   },
@@ -310,7 +308,7 @@ const requestGroups = [
     label: "New requests (3)",
     tone: "blue",
     rows: [
-      { title: "Coca-Cola summer activation", image: clientAssets.cocaCola, type: "Request", company: "Coca-Cola", department: "Client Services", classification: "New campaign", date: "03 Jun 2026 10", priority: "High" as const },
+      { title: "Create key assets for a summer campaign", image: clientAssets.cocaCola, type: "Request", company: "Coca-Cola", department: "Client Services", classification: campaign.campaign, date: "03 Jun 2026 10", priority: "High" as const },
       { title: "Digital launch estimate", image: clientAssets.loreal, type: "Request", company: "L'Oreal", department: "Account", classification: "Product launch", date: "05 Jun 2026 11", priority: "Medium" as const },
     ],
   },
@@ -321,22 +319,31 @@ const estimateGroups = [
     label: "Awaiting approval (3)",
     tone: "red",
     rows: [
-      { title: "Coca-Cola Summer Refresh Estimate", image: clientAssets.cocaCola, type: "Estimate", company: "Coca-Cola", department: "Account", classification: "GBP 94.7k", date: "04 Jun 2026 12", priority: "High" as const },
-      { title: "New Launch Digital Estimate", image: clientAssets.loreal, type: "Estimate", company: "L'Oreal", department: "Strategy", classification: "GBP 42.5k", date: "06 Jun 2026 11", priority: "Medium" as const },
+      { title: "Coca-Cola Summer Assets Estimate", image: clientAssets.cocaCola, type: "Estimate", company: "Coca-Cola", department: "Account", classification: "€15,000", date: "04 Jun 2026 12", priority: "High" as const },
+      { title: "New Launch Digital Estimate", image: clientAssets.loreal, type: "Estimate", company: "L'Oreal", department: "Strategy", classification: "€42.5k", date: "06 Jun 2026 11", priority: "Medium" as const },
     ],
   },
   {
     label: "Approved (5)",
     tone: "green",
     rows: [
-      { title: "3D Billboard Production", image: clientAssets.samsung, type: "Estimate", company: "Samsung", department: "Production", classification: "GBP 31.0k", date: "12 Jun 2026 18", priority: "Medium" as const },
-      { title: "Retail Toolkit Adaptation", image: clientAssets.cocaCola, type: "Estimate", company: "Coca-Cola", department: "Design", classification: "GBP 18.6k", date: "14 Jun 2026 18", priority: "Low" as const },
-      { title: "Motion Cutdowns", image: projectAssets.motion, type: "Estimate", company: "Nike", department: "Audiovisual", classification: "GBP 22.8k", date: "18 Jun 2026 18", priority: "Medium" as const },
+      { title: "3D Billboard Production", image: clientAssets.samsung, type: "Estimate", company: "Samsung", department: "Production", classification: "€31.0k", date: "12 Jun 2026 18", priority: "Medium" as const },
+      { title: "Website Landing Page", image: projectAssets.retail, type: "Deliverable", company: "Coca-Cola", department: "Design", classification: "Approved scope", date: "18 Jun 2026 18", priority: "Low" as const },
+      { title: "15s Video", image: projectAssets.motion, type: "Deliverable", company: "Coca-Cola", department: "Video", classification: "Approved scope", date: "20 Jun 2026 18", priority: "Medium" as const },
     ],
   },
 ];
 
 const resourceGroups = [
+  {
+    label: "Deliverable allocation (3)",
+    tone: "blue",
+    rows: [
+      { title: "Landing Page", image: projectAssets.retail, type: "Deliverable", company: "Coca-Cola", department: "Design", classification: "Arthur / 9 days", date: "18 Jun 2026 18", priority: "High" as const },
+      { title: "15s Video", image: projectAssets.motion, type: "Deliverable", company: "Coca-Cola", department: "Video", classification: "Daniel / 4 days", date: "20 Jun 2026 18", priority: "Medium" as const },
+      { title: "3D Digital Banner", image: projectAssets.billboard, type: "Deliverable", company: "Coca-Cola", department: "Design", classification: "Arthur / 3 days", date: "21 Jun 2026 18", priority: "Medium" as const },
+    ],
+  },
   {
     label: "Over capacity (2)",
     tone: "red",
@@ -349,8 +356,7 @@ const resourceGroups = [
     label: "Available (4)",
     tone: "green",
     rows: [
-      { title: "Maya Chen", image: campaign.team[2].avatar, type: "Copywriter", company: "Internal", department: "Creative Services", classification: "51% booked", date: "This week", priority: "Low" as const },
-      { title: "Daniel Brooks", image: campaign.team[3].avatar, type: "Motion", company: "Internal", department: "Audiovisual", classification: "68% booked", date: "This week", priority: "Low" as const },
+      { title: "Daniel Brooks", image: campaign.team[2].avatar, type: "Editor", company: "Internal", department: "Video", classification: "68% booked", date: "This week", priority: "Low" as const },
     ],
   },
 ];
@@ -360,9 +366,9 @@ const profitabilityGroups = [
     label: "Client profitability",
     tone: "green",
     rows: [
-      { title: "Coca-Cola", image: clientAssets.cocaCola, type: "Client", company: "Coca-Cola", department: "Client Services", classification: "41% margin", date: "GBP 94.7k", priority: "Low" as const },
-      { title: "Samsung", image: clientAssets.samsung, type: "Client", company: "Samsung", department: "Production", classification: "34% margin", date: "GBP 122.4k", priority: "Medium" as const },
-      { title: "L'Oreal", image: clientAssets.loreal, type: "Client", company: "L'Oreal", department: "Strategy", classification: "29% margin", date: "GBP 42.5k", priority: "High" as const },
+      { title: "Coca-Cola", image: clientAssets.cocaCola, type: "Client", company: "Coca-Cola", department: "Client Services", classification: "On plan", date: "€15,000", priority: "Low" as const },
+      { title: "Samsung", image: clientAssets.samsung, type: "Client", company: "Samsung", department: "Production", classification: "34% margin", date: "€122.4k", priority: "Medium" as const },
+      { title: "L'Oreal", image: clientAssets.loreal, type: "Client", company: "L'Oreal", department: "Strategy", classification: "29% margin", date: "€42.5k", priority: "High" as const },
     ],
   },
 ];
@@ -372,9 +378,9 @@ const taskGroups = [
     label: "My tasks (5)",
     tone: "green",
     rows: [
-      { title: "Brief review", image: clientAssets.cocaCola, type: "Task", company: "Coca-Cola", department: "Client Services", classification: "Summer Campaign", date: "Today", priority: "High" as const },
-      { title: "Key visual design", image: projectAssets.retail, type: "Task", company: "Coca-Cola", department: "Design", classification: "Summer Campaign", date: "10 Jun 2026 18", priority: "Medium" as const },
-      { title: "Client proofing", image: clientAssets.cocaCola, type: "Task", company: "Coca-Cola", department: "Client Services", classification: "Final approval", date: "22 Jun 2026 15", priority: "None" as const },
+      { title: "Design landing page", image: projectAssets.retail, type: "Task", company: "Coca-Cola", department: "Design", classification: "Website", date: "18 Jun 2026 18", priority: "High" as const },
+      { title: "Edit 15s video", image: projectAssets.motion, type: "Task", company: "Coca-Cola", department: "Video", classification: "Video", date: "20 Jun 2026 18", priority: "Medium" as const },
+      { title: "Final approval", image: clientAssets.cocaCola, type: "Task", company: "Coca-Cola", department: "Client Services", classification: "Delivery", date: "24 Jun 2026 15", priority: "None" as const },
     ],
   },
 ];

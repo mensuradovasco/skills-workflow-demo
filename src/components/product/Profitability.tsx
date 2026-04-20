@@ -4,10 +4,11 @@ import { DocumentFrame } from "./DocumentFrame";
 
 const bars = [82, 64, 52, 48, 39, 22, 18, 16];
 const rows = [
-  ["Creative territory", "Creative", "GBP 18,400", "42%", "Approved"],
-  ["15s motion cutdowns", "Audiovisual", "GBP 14,900", "36%", "In progress"],
-  ["Retail poster system", "Design", "GBP 21,700", "44%", "Approved"],
-  ["OOH artwork adaptation", "Production", "GBP 9,800", "31%", "To approve"],
+  ["Concept & Creative", "Creative", "€3,000", "Approved", "Approved"],
+  ["Website Landing Page", "Design", "€4,000", "In progress", "In progress"],
+  ["15s Video", "Editor", "€3,000", "In progress", "In progress"],
+  ["3D Digital Banner", "Design", "€3,500", "Queued", "Ready"],
+  ["Project Management", "Creative", "€1,500", "On plan", "On plan"],
 ];
 
 export function Profitability() {
@@ -23,25 +24,25 @@ export function Profitability() {
         <section className="profit-hero">
           <article>
             <FontAwesomeIcon icon={faCoins} />
-            <small>Revenue forecast</small>
-            <strong>GBP 94.7k</strong>
+            <small>Approved budget</small>
+            <strong>€15,000</strong>
           </article>
           <article>
             <FontAwesomeIcon icon={faChartLine} />
-            <small>Gross margin</small>
-            <strong>41%</strong>
+            <small>Project status</small>
+            <strong>In progress</strong>
           </article>
           <article>
             <FontAwesomeIcon icon={faFileInvoiceDollar} />
             <small>Billing remaining</small>
-            <strong>GBP 31.2k</strong>
+            <strong>€7,500</strong>
           </article>
         </section>
         <section className="profit-charts">
           <div className="profit-bars">
             <header>
-              <strong>Margin planned and remaining</strong>
-              <small>Balance by company</small>
+              <strong>Budget planned and remaining</strong>
+              <small>Balance by deliverable</small>
             </header>
             <div>
               {bars.map((height, index) => (
@@ -66,7 +67,7 @@ export function Profitability() {
             <span>Area</span>
             <span>Department</span>
             <span>Revenue</span>
-            <span>Margin</span>
+            <span>Status</span>
             <span>Stage</span>
           </div>
           {rows.map(([area, department, revenue, margin, stage]) => (

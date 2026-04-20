@@ -14,7 +14,7 @@ export function ProjectSetup({ initialTab }: ProjectSetupProps) {
       icon={faChartGantt}
       initialTab={initialTab}
       tabs={["FEED", "INFO", "JOBS", "KANBAN", "GANTT", "PROFITABILITY"]}
-      title="Summer Campaign"
+      title="Coca-Cola - Summer Assets"
     >
       <GanttView />
     </DocumentFrame>

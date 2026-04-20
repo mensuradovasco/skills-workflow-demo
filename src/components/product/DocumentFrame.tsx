@@ -64,7 +64,7 @@ export function DocumentFrame({
             <div>
               <strong>{title}</strong>
               <small>
-                {campaign.client} <span>/</span> 2026 <span>/</span> Contract <span>/</span> Summer Refresh
+                {campaign.organization} <span>/</span> Projects <span>/</span> {campaign.campaign}
               </small>
             </div>
           </div>
@@ -133,15 +133,15 @@ export function FeedDocumentView() {
   const executors = campaign.team.slice(1);
   const associated = campaign.team.slice(0, 2);
   const checklist = [
-    "Global Account Director",
-    "Department Lead Creative",
-    "Department Lead Digital",
-    "Department Lead Broadcast",
-    "Finance Manager",
+    "Client Request / Brief",
+    "Estimate / Budget",
+    "Project Plan",
+    "Creative Brief",
+    "Delivery List",
   ];
   const history = [
-    { name: "Arthur", time: "15:01", action: "moved stage to", stage: "Approved" },
-    { name: "Arthur", time: "14:45", action: "moved stage to", stage: "Client Approval" },
+    { name: "Rachel", time: "15:01", action: "moved estimate to", stage: "Approved" },
+    { name: "Arthur", time: "14:45", action: "started", stage: "Landing Page" },
   ];
 
   return (
@@ -154,29 +154,20 @@ export function FeedDocumentView() {
           </header>
           <div className="feed-description-box">
             <div className="feed-description-content">
-              <p>Excited to present the estimate for the Coca-Cola 3D OOH Summer Refresh campaign.</p>
+              <p>Client request: create key assets for a Coca-Cola summer campaign.</p>
               <p>
                 <strong>Scope:</strong><br />
-                Conceptualization and design<br />
-                Artwork development<br />
-                Location planning<br />
-                Social media strategy<br />
-                Analytics
-              </p>
-              <p>
-                <strong>Assets:</strong><br />
-                Logo variations<br />
-                Beverage visuals<br />
-                Bottle imagery<br />
-                Lifestyle shots
+                Website Landing Page<br />
+                15s Video<br />
+                3D Digital Banner
               </p>
               <p>
                 <strong>Timeline:</strong><br />
-                Within this week starting from 22nd November
+                Concept, Website, Video, 3D Banner, Delivery
               </p>
               <p>
                 <strong>Cost:</strong><br />
-                TBD, in progress
+                €15,000 approved
               </p>
               <div className="feed-documents">
                 <article>
@@ -185,14 +176,14 @@ export function FeedDocumentView() {
                     alt="Coca-Cola creative preview"
                   />
                   <div>
-                    <strong>3D billboard reference</strong>
+                    <strong>Summer asset reference</strong>
                     <small>Image</small>
                   </div>
                 </article>
                 <article>
                   <span><FontAwesomeIcon icon={faFileImage} /></span>
                   <div>
-                    <strong>Summer campaign moodboard</strong>
+                    <strong>Creative Brief</strong>
                     <small>Creative brief</small>
                   </div>
                 </article>
@@ -207,7 +198,7 @@ export function FeedDocumentView() {
               {checklist.map((item, index) => (
                 <div className={index === 1 ? "feed-check-row selected" : "feed-check-row"} key={item}>
                   <span>{item}</span>
-                  <span>23 November 2026</span>
+                  <span>04 Jun 2026</span>
                   <span>
                     <FontAwesomeIcon icon={faCheck} />
                     {index < 3 && <img className="avatar photo" src={campaign.team[index % campaign.team.length].avatar} alt="" />}
@@ -249,11 +240,11 @@ export function FeedDocumentView() {
         <section className="feed-stage-card">
           <header>
             <img className="avatar photo" src={requester.avatar} alt="" />
-            <small>11 October 2026, 13:31</small>
+            <small>04 Jun 2026, 13:31</small>
           </header>
           <div>
             <strong>Stage</strong>
-            <span><i /> Approved</span>
+            <span><i /> In progress</span>
           </div>
         </section>
 
@@ -303,25 +294,25 @@ function JobsListView() {
           label: "To approve (2)",
           tone: "red",
           rows: [
-            { title: "Client kickoff meeting", type: "Meeting", department: "Client Services", classification: "Summer Campaign", date: "03 Jun 2026 10", priority: "High" },
-            { title: "Budget confirmation", type: "Job", department: "Account", classification: "Coca-Cola", date: "04 Jun 2026 12", priority: "High" },
+            { title: "Client Request / Brief", type: "Document", department: "Client Services", classification: campaign.campaign, date: "03 Jun 2026 10", priority: "High" },
+            { title: "Estimate / Budget", type: "Estimate", department: "Account", classification: "€15,000", date: "04 Jun 2026 12", priority: "High" },
           ],
         },
         {
           label: "Approved (4)",
           tone: "green",
           rows: [
-            { title: "Creative concept", type: "Task", department: "Creative Services", classification: "Summer Campaign", date: "07 Jun 2026 18", priority: "Medium" },
-            { title: "Key visual design", type: "Task", department: "Design", classification: "Summer Campaign", date: "10 Jun 2026 18", priority: "Medium" },
-            { title: "Retail poster system", type: "Task", department: "Production", classification: "Summer Campaign", date: "14 Jun 2026 18", priority: "Low" },
-            { title: "15s motion cutdowns", type: "Task", department: "Audiovisual", classification: "Summer Campaign", date: "18 Jun 2026 18", priority: "Medium" },
+            { title: "Define idea", type: "Task", department: "Creative", classification: "Concept", date: "07 Jun 2026 18", priority: "Medium" },
+            { title: "Design landing page", type: "Task", department: "Design", classification: "Website", date: "10 Jun 2026 18", priority: "Medium" },
+            { title: "Edit 15s video", type: "Task", department: "Video", classification: "Video", date: "18 Jun 2026 18", priority: "Medium" },
+            { title: "Create 3D asset", type: "Task", department: "Design", classification: "3D Banner", date: "21 Jun 2026 18", priority: "Low" },
           ],
         },
         {
           label: "Under approval (1)",
           tone: "blue",
           rows: [
-            { title: "Final client proof", type: "Approval", department: "Client Services", classification: "Coca-Cola", date: "22 Jun 2026 15", priority: "None" },
+            { title: "Final approval", type: "Approval", department: "Client Services", classification: "Delivery", date: "24 Jun 2026 15", priority: "None" },
           ],
         },
       ]}
@@ -335,9 +326,9 @@ function InfoListView({ tab }: { tab: string }) {
       <div className="document-info-grid">
         {[
           ["Client", campaign.client],
-          ["Campaign", campaign.campaign],
+          ["Project", campaign.campaign],
           ["Owner", campaign.request.receivedFrom],
-          ["Budget range", campaign.request.budgetRange],
+          ["Budget", "€15,000"],
           ["Due date", campaign.request.dueDate],
           ["Selected tab", tab],
         ].map(([label, value]) => (
@@ -357,30 +348,31 @@ function ProjectKanbanView() {
       title: "Briefing",
       tone: "blue",
       cards: [
-        { title: "Shelf Banner", brand: "Coca Cola", campaign: "Summer Campaign", channel: "Direct Mail", status: "To Do", dueDate: "06/18", comments: 0, reference: "COCA0040Print(" },
-        { title: "Retail Kit", brand: "Coca Cola", campaign: "Summer Campaign", channel: "Retail", status: "To Do", dueDate: "06/20", comments: 2, reference: "COCA0041Retail" },
+        { title: "Define idea", brand: "Coca-Cola", campaign: campaign.campaign, channel: "Concept", status: "Approved", dueDate: "06/07", comments: 1, reference: "COCA-CONCEPT" },
+        { title: "Quick client approval", brand: "Coca-Cola", campaign: campaign.campaign, channel: "Concept", status: "Approved", dueDate: "06/08", comments: 1, reference: "COCA-APPROVAL" },
       ],
     },
     {
       title: "In progress",
       tone: "gold",
       cards: [
-        { title: "Creative Concept", brand: "Coca Cola", campaign: "Summer Campaign", channel: "Social", status: "Doing", dueDate: "06/19", comments: 3, reference: "COCA0058Social" },
-        { title: "OOH Adaptation", brand: "Coca Cola", campaign: "Summer Campaign", channel: "OOH", status: "Doing", dueDate: "06/22", comments: 1, reference: "COCA0064OOH" },
+        { title: "Design landing page", brand: "Coca-Cola", campaign: campaign.campaign, channel: "Website", status: "Doing", dueDate: "06/18", comments: 3, reference: "COCA-WEB-DESIGN" },
+        { title: "Build page", brand: "Coca-Cola", campaign: campaign.campaign, channel: "Website", status: "Doing", dueDate: "06/19", comments: 1, reference: "COCA-WEB-BUILD" },
       ],
     },
     {
       title: "Internal review",
       tone: "green",
       cards: [
-        { title: "Motion Cutz", brand: "Coca Cola", campaign: "Summer Campaign", channel: "Video", status: "Review", dueDate: "06/23", comments: 4, reference: "COCA0071Video" },
+        { title: "Edit 15s video", brand: "Coca-Cola", campaign: campaign.campaign, channel: "Video", status: "Review", dueDate: "06/20", comments: 4, reference: "COCA-VIDEO-15" },
+        { title: "Create 3D asset", brand: "Coca-Cola", campaign: campaign.campaign, channel: "3D Banner", status: "Review", dueDate: "06/21", comments: 2, reference: "COCA-3D-BANNER" },
       ],
     },
     {
       title: "Client approval",
       tone: "red",
       cards: [
-        { title: "Final Proof", brand: "Coca Cola", campaign: "Summer Campaign", channel: "Approval", status: "Awaiting", dueDate: "06/25", comments: 1, reference: "COCA0080Proof" },
+        { title: "Final approval", brand: "Coca-Cola", campaign: campaign.campaign, channel: "Delivery", status: "Awaiting", dueDate: "06/24", comments: 1, reference: "COCA-FINAL" },
       ],
     },
   ];
@@ -441,9 +433,9 @@ function FilesListView() {
           label: "Proofing assets (3)",
           tone: "blue",
           rows: [
-            { title: "Summer Refresh KV v3", type: "File", department: "Design", classification: "Proofing", date: "18 Jun 2026 18", priority: "High" },
-            { title: "Retail poster master", type: "File", department: "Production", classification: "Proofing", date: "19 Jun 2026 16", priority: "Medium" },
-            { title: "15s motion cutdown", type: "File", department: "Audiovisual", classification: "Proofing", date: "20 Jun 2026 15", priority: "Medium" },
+            { title: "Landing Page v1", type: "File", department: "Design", classification: "Proofing", date: "18 Jun 2026 18", priority: "High" },
+            { title: "15s Video edit", type: "File", department: "Video", classification: "Proofing", date: "20 Jun 2026 15", priority: "Medium" },
+            { title: "3D Digital Banner", type: "File", department: "Design", classification: "Proofing", date: "21 Jun 2026 15", priority: "Medium" },
           ],
         },
       ]}
@@ -453,18 +445,18 @@ function FilesListView() {
 
 function ProfitabilityTabView() {
   const rows = [
-    ["Revenue forecast", "GBP 94.7k", "Approved", "41%"],
-    ["Planned cost", "GBP 55.9k", "In progress", "32%"],
-    ["Billing remaining", "GBP 31.2k", "To invoice", "18%"],
-    ["Actual hours", "126h", "Tracked", "86%"],
+    ["Approved budget", "€15,000", "Approved", "100%"],
+    ["Planned cost", "€13,750", "In progress", "92%"],
+    ["Billing remaining", "€7,500", "To invoice", "50%"],
+    ["Actual hours", "44h", "Tracked", "41%"],
   ];
 
   return (
     <div className="document-profit-tab">
       <div className="profit-mini-cards">
-        <article><small>Gross margin</small><strong>41%</strong></article>
-        <article><small>Forecast</small><strong>GBP 94.7k</strong></article>
-        <article><small>Remaining</small><strong>GBP 31.2k</strong></article>
+        <article><small>Budget</small><strong>€15,000</strong></article>
+        <article><small>Forecast</small><strong>On plan</strong></article>
+        <article><small>Remaining</small><strong>€7,500</strong></article>
       </div>
       <div className="profit-tab-table">
         {rows.map(([label, value, stage, margin]) => (
@@ -527,7 +519,7 @@ export function ListTable({ groups }: ListTableProps) {
               <span>{row.company ?? "Company 1"}</span>
               <span>{row.division ?? "Brazil"}</span>
               <span>{row.department ?? "Client Services"}</span>
-              <span>{row.classification ?? row.owner ?? "Summer Campaign"}</span>
+              <span>{row.classification ?? row.owner ?? campaign.campaign}</span>
               <span><mark>{row.date ?? "05 May 2026 00"}</mark></span>
               <span><b className={`priority ${row.priority ?? "Medium"}`}>{row.priority ?? "Medium"}</b></span>
             </div>

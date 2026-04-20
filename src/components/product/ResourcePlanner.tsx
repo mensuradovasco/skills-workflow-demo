@@ -18,27 +18,27 @@ type BacklogItem = {
   color: string;
   days: string;
   id: string;
+  kind: string;
   title: string;
 };
 
 const calendarDays = ["25", "26", "27", "28", "29", "30", "01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21"];
 
 const initialBacklog: BacklogItem[] = [
-  { id: "kv", title: "Key visual design", days: "4d", color: "#56b9e5" },
-  { id: "copy", title: "Social copy routes", days: "3d", color: "#bdb2f4" },
-  { id: "retail", title: "Retail POS toolkit", days: "6d", color: "#68c39f" },
-  { id: "motion", title: "15s motion cutdowns", days: "5d", color: "#f4a94a" },
-  { id: "ooh", title: "OOH artwork adapts", days: "4d", color: "#4c7bd9" },
-  { id: "report", title: "Launch report setup", days: "2d", color: "#70c44f" },
+  { id: "landing-page", title: "Landing Page", kind: "Deliverable", days: "9d", color: "#56b9e5" },
+  { id: "landing-design", title: "Design landing page", kind: "Website task", days: "4d", color: "#68c39f" },
+  { id: "landing-build", title: "Build page", kind: "Website task", days: "5d", color: "#4c7bd9" },
+  { id: "video", title: "15s Video", kind: "Deliverable", days: "4d", color: "#f4a94a" },
+  { id: "banner", title: "3D Digital Banner", kind: "Deliverable", days: "3d", color: "#7aa66a" },
+  { id: "delivery", title: "Delivery List", kind: "Document", days: "1d", color: "#70c44f" },
 ];
 
 const baseBookings = [
-  { person: "Arthur", title: "KV design", start: 0, span: 7, color: "#56b9e5" },
-  { person: "Arthur", title: "OOH adapts", start: 8, span: 9, color: "#4c7bd9" },
-  { person: "Maya", title: "Copy routes", start: 1, span: 6, color: "#bdb2f4" },
-  { person: "Maya", title: "Proof copy", start: 9, span: 4, color: "#7aa66a" },
-  { person: "Daniel", title: "Motion prep", start: 13, span: 8, color: "#f4a94a" },
-  { person: "Ellen", title: "Client review", start: 16, span: 7, color: "#58b8e4" },
+  { person: "Rachel", title: "Concept", start: 0, span: 6, color: "#bdb2f4" },
+  { person: "Rachel", title: "Final approval", start: 16, span: 5, color: "#58b8e4" },
+  { person: "Arthur", title: "Landing page", start: 4, span: 9, color: "#56b9e5" },
+  { person: "Arthur", title: "3D banner", start: 12, span: 6, color: "#4c7bd9" },
+  { person: "Daniel", title: "15s video", start: 10, span: 8, color: "#f4a94a" },
 ];
 
 export function ResourcePlanner() {
@@ -86,7 +86,7 @@ export function ResourcePlanner() {
               </div>
             </div>
             <div className="allocation-rows">
-              {campaign.team.concat([{ ...campaign.team[0], name: "Ellen", role: "Account Director", skill: "Planning", load: 58 }]).map((person) => (
+              {campaign.team.map((person) => (
                 <div
                   className="allocation-row"
                   key={person.name}
@@ -127,7 +127,7 @@ export function ResourcePlanner() {
           </div>
           <aside className="allocation-backlog">
             <h4>Unassigned work</h4>
-            <p>Drag a campaign task onto a resource row to adjust the plan.</p>
+            <p>Drag a deliverable or task onto a resource row to adjust the plan.</p>
             {backlog.map((item) => (
               <article
                 draggable
@@ -139,7 +139,7 @@ export function ResourcePlanner() {
                 <FontAwesomeIcon icon={faGripVertical} />
                 <div>
                   <strong>{item.title}</strong>
-                  <small>{item.days}</small>
+                  <small>{item.kind} / {item.days}</small>
                 </div>
               </article>
             ))}

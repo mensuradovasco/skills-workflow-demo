@@ -212,49 +212,49 @@ const taskImages = [
 ];
 
 const homeTasks = [
-  ["Summer Refresh Campaign", "Coca-Cola", "Overdue"],
-  ["3D Billboard Adaptation", "Samsung", "1 day"],
-  ["Digital Creative Launch", "Nike", "3 days"],
-  ["Beauty Product Reveal", "L'Oreal", "4 days"],
-  ["Retail Toolkit QA", "HP", "5 days"],
+  ["Coca-Cola - Summer Assets", "Coca-Cola", "Today"],
+  ["Define idea", "Coca-Cola", "Done"],
+  ["Design landing page", "Coca-Cola", "2 days"],
+  ["Edit 15s video", "Coca-Cola", "4 days"],
+  ["Create 3D asset", "Coca-Cola", "5 days"],
 ];
 
 const homeMessages = [
-  ["Sofia Martins", "Can we review the estimate before noon?"],
-  ["Rachel Green", "Creative and production tasks are ready to assign."],
-  ["Arthur Mendes", "KV v3 is uploaded for proofing."],
+  ["Sofia Martins", "Can we review the €15,000 estimate before noon?"],
+  ["Rachel Green", "The project plan is linked to the approved estimate."],
+  ["Arthur Mendes", "Landing page and 3D banner tasks are ready."],
 ];
 
 const chatMessages = [
   {
     author: "Sofia Martins",
     avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=96&q=80",
-    text: "Can we include the retail poster system and 15s cutdowns in the first estimate?",
+    text: "Can we include the landing page, 15s video and 3D banner in one estimate?",
     time: "09:48",
   },
   {
     author: "Rachel Green",
     avatar: "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?auto=format&fit=crop&w=96&q=80",
-    text: "Yes. I am converting the request into a budget now and linking the scope to the project plan.",
+    text: "Yes. I am converting the request into a €15,000 estimate and linking the scope to the project plan.",
     time: "09:52",
     mine: true,
   },
   {
-    author: "Maya Chen",
+    author: "Daniel Brooks",
     avatar: "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=96&q=80",
-    text: "Creative territory and copy routes can start as soon as the estimate is approved.",
+    text: "The 15s edit can start as soon as the estimate is approved.",
     time: "10:04",
   },
   {
     author: "Arthur Mendes",
     avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=96&q=80",
-    text: "I will prepare the key visual frame and the OOH adaptation slots.",
+    text: "I will prepare the landing page design and 3D banner asset.",
     time: "10:07",
   },
   {
     author: "Rachel Green",
     avatar: "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?auto=format&fit=crop&w=96&q=80",
-    text: "Perfect. I will share the estimate for approval and then auto-create the delivery tasks.",
+    text: "Perfect. I will share the estimate for approval and then create the phase tasks.",
     time: "10:11",
     mine: true,
   },
@@ -288,7 +288,7 @@ function ChatDrawer({ onClose }: { onClose: () => void }) {
         <div className="chat-project-title">
           <span><img src="/assets/client-logos/coca-cola.svg" alt="" /></span>
           <div>
-            <strong>Summer Refresh Campaign</strong>
+            <strong>{campaign.campaign}</strong>
             <small>Coca-Cola / Client Services</small>
           </div>
         </div>
@@ -297,7 +297,7 @@ function ChatDrawer({ onClose }: { onClose: () => void }) {
         </button>
       </header>
       <div className="chat-participants">
-        {[campaign.team[0], campaign.team[1], campaign.team[2], campaign.team[3]].map((member) => (
+        {campaign.team.map((member) => (
           <img className="avatar photo" src={member.avatar} alt="" key={member.name} />
         ))}
         <span>+3</span>
@@ -337,15 +337,15 @@ function StepContent({
       <div className="home-screen">
         <div className="home-top-strip">
           <span><FontAwesomeIcon icon={faHouse} /></span>
-          <strong>Home</strong>
+          <strong>{campaign.organization}</strong>
         </div>
         <div className="home-main">
           <div className="welcome-copy">
             <h3>Hi Rachel,</h3>
             <p>
-              There are <strong>5 project updates</strong> and <em>12 tasks</em> planned for today.
+              There are <strong>5 project updates</strong> and <em>8 tasks</em> planned for today.
               <br />
-              Also 4 days until your holidays!
+              Coca-Cola - Summer Assets is ready to move from estimate to delivery.
             </p>
           </div>
           <div className="mini-section">
@@ -366,7 +366,7 @@ function StepContent({
           <div className="spotlight">
             <h4>Project Spotlight</h4>
             <p>Most recent and delayed</p>
-            {["Nike Fashion Week", "Samsung Billboard", "Coca-Cola Summer", "L'Oreal Reveal"].map((item, index) => (
+            {["Coca-Cola Summer Assets", "Estimate approved", "Landing page", "Delivery list"].map((item, index) => (
               <div className="spotlight-tile" key={item}>
                 <img src={spotlightImages[index]} alt="" />
                 <small>{item}</small>
@@ -407,7 +407,7 @@ function StepContent({
             <small>New client request</small>
             <strong>{campaign.client}</strong>
             <span>{campaign.campaign}</span>
-            <em>Scope: social, video, retail and OOH</em>
+            <em>Scope: website, 15s video and 3D banner</em>
           </div>
           <HotspotButton
             icon="magic"
@@ -446,7 +446,7 @@ function StepContent({
           <div>
             <small>Client approved estimate</small>
             <h3>Budget approved</h3>
-            <p>Coca Cola approved the estimate. Deliverables are now cleared for project creation.</p>
+            <p>Coca-Cola approved the €15,000 estimate. Deliverables are now cleared for project creation.</p>
           </div>
           <div className="approval-deliverables">
             {campaign.request.deliverables.map((item, index) => (
@@ -583,15 +583,15 @@ function HotspotButton({
 
 function stageTitle(step: DemoStep) {
   const titles: Record<DemoStep, string> = {
-    request: "A new client request arrives.",
-    budget: "The estimate builds itself from scope.",
+    request: "Coca-Cola sends a summer asset request.",
+    budget: "The €15,000 estimate builds from scope.",
     approval: "Approval turns the budget into action.",
-    project: "The project setup is automatic.",
-    tasks: "The workflow is ready before kickoff.",
+    project: "The project workspace carries the same story.",
+    tasks: "The five phases become clear tasks.",
     resources: "Capacity and skills guide assignments.",
     execution: "Work moves forward with time captured.",
     proofing: "Creative review stays inside the workflow.",
-    profitability: "Profitability updates as the project runs.",
+    profitability: "Budget tracking stays connected to delivery.",
   };
   return titles[step];
 }
@@ -599,23 +599,23 @@ function stageTitle(step: DemoStep) {
 function stageDescription(step: DemoStep) {
   const descriptions: Record<DemoStep, string> = {
     request:
-      "Start on a realistic homepage view. The request appears as an overlay, like the Figma demo reference.",
+      "Start in the Coca-Cola workspace. The request appears as the first operational signal.",
     budget:
-      "Services, roles, hours, costs, and margin appear progressively so the value creation is obvious.",
+      "Concept, website, video, 3D banner, and project management roll into one approved estimate.",
     approval:
       "The commercial decision becomes the trigger for delivery, keeping finance and project setup connected.",
     project:
-      "A clean project workspace appears with the budget, timeline, task template, and team already linked.",
+      "A clean project workspace appears with the brief, budget, documents, timeline, and team already linked.",
     tasks:
-      "Tasks come from the approved scope and follow agency delivery stages.",
+      "Tasks follow Concept, Website, Video, 3D Banner, and Delivery.",
     resources:
       "The demo highlights skill matching and workload visibility instead of manual resource hunting.",
     execution:
-      "Moving work through the board updates status and keeps time tracking close to the task.",
+      "Moving work through the board keeps status, assets, and approvals close to the task.",
     proofing:
       "Asset review feels connected to delivery, not like a separate client feedback island.",
     profitability:
-      "The close lands on the business outcome: plan vs actual hours, margin, billing, and forecast clarity.",
+      "The close lands on the business outcome: approved budget, planned work, billing, and delivery readiness.",
   };
   return descriptions[step];
 }

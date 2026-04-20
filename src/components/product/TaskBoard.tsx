@@ -14,7 +14,7 @@ export function TaskBoard({ initialTab }: TaskBoardProps) {
       icon={faListCheck}
       initialTab={initialTab}
       tabs={["FEED", "INFO", "TASKS", "KANBAN", "GANTT", "FILES"]}
-      title="Task Plan"
+      title="Coca-Cola - Summer Assets Tasks"
     >
       <GanttView />
     </DocumentFrame>

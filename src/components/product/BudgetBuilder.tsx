@@ -4,7 +4,6 @@ import {
   faChevronDown,
   faChevronRight,
   faCircleCheck,
-  faLayerGroup,
   faReceipt,
   faScrewdriverWrench,
   faUserGroup,
@@ -25,67 +24,66 @@ const formatCurrency = (value: number) =>
 const deliverables = [
   {
     id: "1",
-    name: "3D OOH Banner",
-    description: "3D key visual adaptation for outdoor and paid social",
-    service: "Creative production",
+    name: "Landing Page",
+    description: "Design and build for the summer campaign page",
+    service: "Website",
   },
   {
     id: "2",
-    name: "Retail POS Toolkit",
-    description: "Poster system, shelf strips and store activation artwork",
-    service: "Retail adaptation",
+    name: "15s Video",
+    description: "Short campaign edit for paid and owned channels",
+    service: "Video",
   },
   {
     id: "3",
-    name: "Campaign Consulting",
-    description: "Account planning, creative direction and client management",
-    service: "Consulting",
+    name: "3D Digital Banner",
+    description: "3D product asset adapted into a digital banner",
+    service: "3D Banner",
   },
 ];
 
 const resourceGroups = [
   {
-    deliverable: "1. 3D OOH Banner",
+    deliverable: "1. Landing Page",
     rows: [
-      { order: "1.1", role: "Account Director", user: "Rachel", group: "Client Services", rate: 250, cost: 250, hours: 8 },
-      { order: "1.2", role: "Creative Director", user: "Maya", group: "Creative", rate: 210, cost: 210, hours: 10 },
-      { order: "1.3", role: "Senior Designer", user: "Arthur", group: "Design", rate: 150, cost: 150, hours: 32 },
-      { order: "1.4", role: "Motion Designer", user: "Daniel", group: "Motion", rate: 170, cost: 170, hours: 22 },
+      { order: "1.1", role: "Creative", user: "Rachel", group: "Creative", rate: 150, cost: 150, hours: 6 },
+      { order: "1.2", role: "Designer", user: "Arthur", group: "Design", rate: 125, cost: 125, hours: 24 },
     ],
   },
   {
-    deliverable: "2. Retail POS Toolkit",
+    deliverable: "2. 15s Video",
     rows: [
-      { order: "2.1", role: "Producer", user: "Rachel", group: "Production", rate: 150, cost: 150, hours: 12 },
-      { order: "2.2", role: "Designer", user: "Arthur", group: "Design", rate: 150, cost: 150, hours: 28 },
-      { order: "2.3", role: "Copywriter", user: "Maya", group: "Creative", rate: 170, cost: 170, hours: 10 },
-      { order: "2.4", role: "Artwork QA", user: "Paul", group: "Studio", rate: 120, cost: 120, hours: 14 },
+      { order: "2.1", role: "Creative", user: "Rachel", group: "Creative", rate: 150, cost: 150, hours: 6 },
+      { order: "2.2", role: "Editor", user: "Daniel", group: "Video", rate: 125, cost: 125, hours: 18 },
     ],
   },
   {
-    deliverable: "3. Campaign Consulting",
+    deliverable: "3. 3D Digital Banner",
     rows: [
-      { order: "3.1", role: "Strategy Director", user: "Wendy", group: "Brand Strategy", rate: 250, cost: 250, hours: 14 },
-      { order: "3.2", role: "Account Director", user: "Rachel", group: "Client Services", rate: 250, cost: 250, hours: 18 },
-      { order: "3.3", role: "Creative Review", user: "Maya", group: "Creative", rate: 180, cost: 180, hours: 8 },
+      { order: "3.1", role: "Creative", user: "Rachel", group: "Creative", rate: 150, cost: 150, hours: 8 },
+      { order: "3.2", role: "Designer", user: "Arthur", group: "Design", rate: 125, cost: 125, hours: 24 },
     ],
   },
 ];
 
 const services = [
-  { order: "1.5", deliverable: "3D OOH Banner", item: "3D render support", supplier: "Studio Eleven", quantity: 1, unit: 5200 },
-  { order: "1.6", deliverable: "3D OOH Banner", item: "Outdoor mockup production", supplier: "Media Lab", quantity: 1, unit: 3000 },
-  { order: "2.5", deliverable: "Retail POS Toolkit", item: "Print proofing package", supplier: "Prime Print", quantity: 1, unit: 3600 },
-  { order: "2.6", deliverable: "Retail POS Toolkit", item: "POS adaptation support", supplier: "Retail Works", quantity: 1, unit: 2800 },
-  { order: "3.4", deliverable: "Campaign Consulting", item: "Market insight sprint", supplier: "Brand Desk", quantity: 1, unit: 2200 },
+  { order: "2.3", deliverable: "15s Video", item: "Stock music license", supplier: "Musicbed", quantity: 1, unit: 600 },
+  { order: "3.3", deliverable: "3D Digital Banner", item: "3D render support", supplier: "Studio Eleven", quantity: 1, unit: 1200 },
 ];
 
 const expenses = [
-  { order: "1.7", deliverable: "3D OOH Banner", item: "Stock imagery", supplier: "Getty", quantity: 4, unit: 300 },
-  { order: "2.7", deliverable: "Retail POS Toolkit", item: "Print samples", supplier: "Prime Print", quantity: 7, unit: 180 },
-  { order: "2.8", deliverable: "Retail POS Toolkit", item: "Courier delivery", supplier: "DHL", quantity: 3, unit: 280 },
-  { order: "3.5", deliverable: "Campaign Consulting", item: "Client workshop travel", supplier: "Internal", quantity: 1, unit: 950 },
+  { order: "1.3", deliverable: "Landing Page", item: "Image license", supplier: "Getty", quantity: 1, unit: 300 },
+  { order: "3.4", deliverable: "3D Digital Banner", item: "File packaging and archive", supplier: "Internal", quantity: 1, unit: 400 },
 ];
+
+type BudgetCostRow = {
+  deliverable: string;
+  item: string;
+  order: string;
+  quantity: number;
+  supplier: string;
+  unit: number;
+};
 
 const deliverableNameFromGroup = (name: string) => name.replace(/^\d+\.\s*/, "");
 
@@ -107,7 +105,8 @@ const deliverableQuotes = deliverables.map((item) => {
   const serviceCosts = totalExternalCostFor(services, item.name);
   const expensesCosts = totalExternalCostFor(expenses, item.name);
   const totalCost = resources + serviceCosts + expensesCosts;
-  const totalIncome = Math.round(totalCost * 1.32);
+  const projectManagementShare = item.id === "1" ? 1300 : item.id === "2" ? 250 : 100;
+  const totalIncome = totalCost + projectManagementShare;
 
   return {
     ...item,
@@ -135,9 +134,15 @@ export function BudgetBuilder() {
     services: false,
     expenses: false,
   });
+  const [openDeliverables, setOpenDeliverables] = useState<Record<string, boolean>>({
+    "Landing Page": true,
+  });
   const tabs = ["FEED", "CHECKLIST", "INFO", "QUOTES", "ESTIMATE BUILDER", "EXPENSES", "PROFITABILITY"];
   const toggleSection = (section: keyof typeof openSections) => {
     setOpenSections((current) => ({ ...current, [section]: !current[section] }));
+  };
+  const toggleDeliverable = (deliverable: string) => {
+    setOpenDeliverables((current) => ({ ...current, [deliverable]: !current[deliverable] }));
   };
 
   return (
@@ -229,11 +234,18 @@ export function BudgetBuilder() {
             </div>
             {resourceGroups.map((group) => (
               <div className="budget-resource-group" key={group.deliverable}>
-                <div className="budget-resource-group-title">
-                  <FontAwesomeIcon icon={faLayerGroup} />
+                {(() => {
+                  const deliverableName = deliverableNameFromGroup(group.deliverable);
+                  const isOpen = openDeliverables[deliverableName] ?? false;
+
+                  return (
+                    <>
+                <button className="budget-resource-group-title" type="button" onClick={() => toggleDeliverable(deliverableName)}>
+                  <FontAwesomeIcon icon={isOpen ? faChevronDown : faChevronRight} />
                   <strong>{group.deliverable}</strong>
-                </div>
-                {group.rows.map((row) => (
+                  <em>{formatCurrency(group.rows.reduce((sum, row) => sum + row.cost * row.hours, 0))}</em>
+                </button>
+                {isOpen && group.rows.map((row) => (
                   <div className="budget-resource-row" key={`${group.deliverable}-${row.order}`}>
                     <span>{row.order}</span>
                     <strong>{row.role}</strong>
@@ -246,19 +258,11 @@ export function BudgetBuilder() {
                     <span><FontAwesomeIcon icon={faCircleCheck} /></span>
                   </div>
                 ))}
+                    </>
+                  );
+                })()}
               </div>
             ))}
-            <div className="budget-resource-row total">
-              <span />
-              <strong>Resources total</strong>
-              <span />
-              <span />
-              <span />
-              <span>{sectionTotals.hours}</span>
-              <span />
-              <span>{formatCurrency(sectionTotals.resources)}</span>
-              <span />
-            </div>
           </div>}
         </section>
 
@@ -268,7 +272,13 @@ export function BudgetBuilder() {
             <strong><FontAwesomeIcon icon={faScrewdriverWrench} /> Services</strong>
             <em>{formatCurrency(sectionTotals.services)}</em>
           </button>
-          {openSections.services && <BudgetCostTable rows={services} total={sectionTotals.services} totalLabel="Services total" />}
+          {openSections.services && (
+            <BudgetCostTable
+              openDeliverables={openDeliverables}
+              rows={services}
+              toggleDeliverable={toggleDeliverable}
+            />
+          )}
         </section>
 
         <section className={openSections.expenses ? "budget-quote-section open" : "budget-quote-section collapsed"}>
@@ -277,7 +287,13 @@ export function BudgetBuilder() {
             <strong><FontAwesomeIcon icon={faReceipt} /> Expenses</strong>
             <em>{formatCurrency(sectionTotals.expenses)}</em>
           </button>
-          {openSections.expenses && <BudgetCostTable rows={expenses} total={sectionTotals.expenses} totalLabel="Expenses total" />}
+          {openSections.expenses && (
+            <BudgetCostTable
+              openDeliverables={openDeliverables}
+              rows={expenses}
+              toggleDeliverable={toggleDeliverable}
+            />
+          )}
         </section>
       </div>}
     </Card>
@@ -285,13 +301,13 @@ export function BudgetBuilder() {
 }
 
 function BudgetCostTable({
+  openDeliverables,
   rows,
-  total,
-  totalLabel,
+  toggleDeliverable,
 }: {
-  rows: Array<{ deliverable: string; item: string; order: string; quantity: number; supplier: string; unit: number }>;
-  total: number;
-  totalLabel: string;
+  openDeliverables: Record<string, boolean>;
+  rows: BudgetCostRow[];
+  toggleDeliverable: (deliverable: string) => void;
 }) {
   return (
     <div className="budget-cost-table">
@@ -305,28 +321,32 @@ function BudgetCostTable({
         <span>Total cost</span>
         <span>Approved</span>
       </div>
-      {rows.map((row) => (
-        <div className="budget-cost-row" key={`${row.order}-${row.item}`}>
-          <span>{row.order}</span>
-          <strong>{row.deliverable}</strong>
-          <span>{row.item}</span>
-          <span>{row.supplier}</span>
-          <span>{row.quantity}</span>
-          <span>{formatCurrency(row.unit)}</span>
-          <span>{formatCurrency(row.quantity * row.unit)}</span>
-          <span><FontAwesomeIcon icon={faCircleCheck} /></span>
+      {deliverables.map((deliverable) => {
+        const deliverableRows = rows.filter((row) => row.deliverable === deliverable.name);
+        const deliverableTotal = deliverableRows.reduce((sum, row) => sum + row.quantity * row.unit, 0);
+
+        return (
+          <div className="budget-resource-group" key={deliverable.name}>
+            <button className="budget-resource-group-title" type="button" onClick={() => toggleDeliverable(deliverable.name)}>
+              <FontAwesomeIcon icon={(openDeliverables[deliverable.name] ?? false) ? faChevronDown : faChevronRight} />
+              <strong>{deliverable.id}. {deliverable.name}</strong>
+              <em>{formatCurrency(deliverableTotal)}</em>
+            </button>
+            {(openDeliverables[deliverable.name] ?? false) && deliverableRows.map((row) => (
+              <div className="budget-cost-row" key={`${row.order}-${row.item}`}>
+                <span>{row.order}</span>
+                <strong>{row.deliverable}</strong>
+                <span>{row.item}</span>
+                <span>{row.supplier}</span>
+                <span>{row.quantity}</span>
+                <span>{formatCurrency(row.unit)}</span>
+                <span>{formatCurrency(row.quantity * row.unit)}</span>
+                <span><FontAwesomeIcon icon={faCircleCheck} /></span>
+              </div>
+            ))}
+          </div>
+        );
+      })}
         </div>
-      ))}
-      <div className="budget-cost-row total">
-        <span />
-        <strong>{totalLabel}</strong>
-        <span />
-        <span />
-        <span />
-        <span />
-        <span>{formatCurrency(total)}</span>
-        <span />
-      </div>
-    </div>
   );
 }

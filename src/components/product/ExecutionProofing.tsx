@@ -11,9 +11,9 @@ import { campaign } from "../../data/cocaColaCampaign";
 import { DocumentFrame } from "./DocumentFrame";
 
 const proofQueue = [
-  { title: "Summer Refresh KV v3", state: "Under approval", icon: faClock },
-  { title: "Retail poster system", state: "Needs revision", icon: faCommentDots },
-  { title: "15s motion cutdown", state: "Approved", icon: faCircleCheck },
+  { title: "Landing Page", state: "Under approval", icon: faClock },
+  { title: "15s Video", state: "In progress", icon: faCommentDots },
+  { title: "3D Digital Banner", state: "Ready for delivery", icon: faCircleCheck },
 ];
 
 export function ExecutionProofing() {
@@ -48,7 +48,7 @@ export function ExecutionProofing() {
             <span className="proof-pin one">1</span>
             <span className="proof-pin two">2</span>
             <div className="proof-brand">
-              <small>Summer Refresh</small>
+              <small>Summer Assets</small>
               <strong>Coca-Cola</strong>
             </div>
           </div>
@@ -66,7 +66,7 @@ export function ExecutionProofing() {
             <img className="avatar photo" src={campaign.team[1].avatar} alt="" />
             <div>
               <strong>Arthur</strong>
-              <p>Updated the bottle crop and prepared the retail proof for final approval.</p>
+              <p>Updated the landing page hero and prepared the delivery proof for final approval.</p>
             </div>
           </article>
         </aside>

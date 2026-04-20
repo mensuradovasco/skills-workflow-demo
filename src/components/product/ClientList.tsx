@@ -16,17 +16,17 @@ const clients = [
 
 const projects = [
   {
-    client: "Samsung",
-    status: "New",
+    client: "Coca-Cola",
+    status: "In progress",
     tone: "green",
-    title: "3D Billboard",
+    title: "Coca-Cola - Summer Assets",
     image: "https://images.unsplash.com/photo-1523726491678-bf852e717f6a?auto=format&fit=crop&w=780&q=80",
   },
   {
     client: "Coca-Cola",
-    status: "New",
+    status: "Approved",
     tone: "green",
-    title: "Summer Campaign",
+    title: "Estimate / Budget",
     image: "https://images.unsplash.com/photo-1518005020951-eccb494ad742?auto=format&fit=crop&w=780&q=80",
   },
   {
@@ -90,8 +90,8 @@ export function ClientList() {
                   <button aria-label={`Open ${project.title}`}><FontAwesomeIcon icon={faPlus} /></button>
                 </div>
                 <footer>
-                  <span>24 March 2026</span>
-                  <span>31 November 2026</span>
+                  <span>03 Jun 2026</span>
+                  <span>25 Jun 2026</span>
                 </footer>
               </article>
             ))}
