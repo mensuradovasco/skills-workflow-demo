@@ -1,0 +1,7 @@
+{
+  "name": "Skills Workflow Demo Screens Import",
+  "id": "skills-workflow-demo-screens-import",
+  "api": "1.0.0",
+  "main": "code.js",
+  "editorType": ["figma"]
+}
