@@ -149,6 +149,7 @@ export function GanttView() {
             <div className="gantt-track" key={`${row.wbs}-${row.name}-bar`}>
               <span
                 className={`gantt-bar ${row.color} ${interaction?.index === index ? "editing" : ""}`}
+                data-tour-anchor={row.wbs === "2" ? "project-gantt-timeline" : undefined}
                 onMouseDown={(event) => startInteraction(event, index, "move")}
                 style={{ left: `${row.left}%`, width: `${row.width}%` }}
               >

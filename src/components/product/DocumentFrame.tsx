@@ -25,10 +25,15 @@ import { campaign } from "../../data/cocaColaCampaign";
 type DocumentFrameProps = {
   activeTab?: string;
   accent?: string;
+  calendarContent?: ReactNode;
   children: ReactNode;
+  feedStageActionLabel?: string;
+  feedStageLabel?: string;
   hideToolbar?: boolean;
   icon?: IconDefinition;
   initialTab?: string;
+  jobsContent?: ReactNode;
+  tabAnchors?: Record<string, string>;
   tabs?: string[];
   title?: string;
 };
@@ -38,10 +43,15 @@ const defaultTabs = ["FEED", "INFO", "JOBS", "FILES", "GANTT", "PROFITABILITY"];
 export function DocumentFrame({
   accent = "#bdb2f4",
   activeTab = "ACTIVITIES",
+  calendarContent,
   children,
+  feedStageActionLabel,
+  feedStageLabel,
   hideToolbar = false,
   icon = faFileLines,
   initialTab,
+  jobsContent,
+  tabAnchors,
   tabs = defaultTabs,
   title = campaign.campaign,
 }: DocumentFrameProps) {
@@ -78,6 +88,7 @@ export function DocumentFrame({
           {tabs.map((tab) => (
             <button
               className={tab === selectedTab ? "active" : ""}
+              data-tour-anchor={tabAnchors?.[tab]}
               key={tab}
               onClick={() => setSelectedTab(tab)}
             >
@@ -98,18 +109,33 @@ export function DocumentFrame({
           </label>
         </div>
       )}
-      {renderTabContent(selectedTab, activeTab, children)}
+      {renderTabContent(selectedTab, activeTab, children, {
+        calendarContent,
+        feedStageActionLabel,
+        feedStageLabel,
+        jobsContent,
+      })}
     </section>
   );
 }
 
-function renderTabContent(selectedTab: string, activeTab: string, children: ReactNode) {
-  if (selectedTab === "FEED") return <FeedDocumentView />;
+function renderTabContent(
+  selectedTab: string,
+  activeTab: string,
+  children: ReactNode,
+  feedState?: {
+    calendarContent?: ReactNode;
+    feedStageActionLabel?: string;
+    feedStageLabel?: string;
+    jobsContent?: ReactNode;
+  },
+) {
+  if (selectedTab === "FEED") return <FeedDocumentView {...feedState} />;
 
   if (selectedTab === activeTab) return children;
 
-  if (["JOBS", "TASKS", "WORKFLOW", "ESTIMATES"].includes(selectedTab)) {
-    return <JobsListView />;
+  if (["JOBS", "KANBAN BY PERSON", "TASKS", "WORKFLOW", "ESTIMATES"].includes(selectedTab)) {
+    return feedState?.jobsContent ?? <JobsListView />;
   }
 
   if (selectedTab === "KANBAN") {
@@ -120,6 +146,10 @@ function renderTabContent(selectedTab: string, activeTab: string, children: Reac
     return <ProfitabilityTabView />;
   }
 
+  if (selectedTab === "GANTT" || selectedTab === "CALENDAR") {
+    return selectedTab === "CALENDAR" ? (feedState?.calendarContent ?? children) : children;
+  }
+
   if (selectedTab === "FILES" || selectedTab === "PROOFING" || selectedTab === "APPROVALS") {
     return <FilesListView />;
   }
@@ -127,7 +157,15 @@ function renderTabContent(selectedTab: string, activeTab: string, children: Reac
   return <InfoListView tab={selectedTab} />;
 }
 
-export function FeedDocumentView() {
+export function FeedDocumentView({
+  feedStageActionLabel,
+  feedStageLabel,
+}: {
+  feedStageActionLabel?: string;
+  feedStageLabel?: string;
+}) {
+  const [stageLabel, setStageLabel] = useState(feedStageLabel ?? "In progress");
+  const [stageActionLabel, setStageActionLabel] = useState(feedStageActionLabel ?? "Send estimate");
   const requester = campaign.team[0];
   const responsible = campaign.team.slice(0, 3);
   const executors = campaign.team.slice(1);
@@ -143,6 +181,28 @@ export function FeedDocumentView() {
     { name: "Rachel", time: "15:01", action: "moved estimate to", stage: "Approved" },
     { name: "Arthur", time: "14:45", action: "started", stage: "Landing Page" },
   ];
+
+  useEffect(() => {
+    setStageLabel(feedStageLabel ?? "In progress");
+    setStageActionLabel(feedStageActionLabel ?? "Send estimate");
+  }, [feedStageActionLabel, feedStageLabel]);
+
+  useEffect(() => {
+    const handleGuidedStepComplete = (event: Event) => {
+      const stepId = (event as CustomEvent<{ id?: string }>).detail?.id;
+      if (stepId === "client-request") {
+        setStageLabel("In progress");
+        setStageActionLabel("Send estimate");
+      }
+      if (stepId === "send-estimate") {
+        setStageLabel("Client approval");
+        setStageActionLabel("Awaiting approval");
+      }
+    };
+
+    window.addEventListener("guided-demo-step-complete", handleGuidedStepComplete);
+    return () => window.removeEventListener("guided-demo-step-complete", handleGuidedStepComplete);
+  }, []);
 
   return (
     <div className="document-feed">
@@ -169,7 +229,7 @@ export function FeedDocumentView() {
                 <strong>Cost:</strong><br />
                 €15,000 approved
               </p>
-              <div className="feed-documents">
+              <div className="feed-documents" data-tour-anchor="project-documents">
                 <article>
                   <img
                     src="https://images.unsplash.com/photo-1629203851122-3726ecdf080e?auto=format&fit=crop&w=180&q=80"
@@ -244,7 +304,10 @@ export function FeedDocumentView() {
           </header>
           <div>
             <strong>Stage</strong>
-            <span><i /> In progress</span>
+            <span><i /> {stageLabel}</span>
+            <button className="feed-stage-action" data-tour-anchor="budget-stage-approval" type="button">
+              {stageActionLabel}
+            </button>
           </div>
         </section>
 

@@ -21,7 +21,7 @@ export function Profitability() {
       title="Profitability"
     >
       <div className="profitability-document">
-        <section className="profit-hero">
+        <section className="profit-hero" data-tour-anchor="final-summary">
           <article>
             <FontAwesomeIcon icon={faCoins} />
             <small>Approved budget</small>

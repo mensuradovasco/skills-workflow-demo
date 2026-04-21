@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import {
@@ -39,11 +39,13 @@ import {
 import { BudgetBuilder } from "./components/product/BudgetBuilder";
 import { ClientList } from "./components/product/ClientList";
 import { ExecutionProofing } from "./components/product/ExecutionProofing";
+import { GUIDED_DEMO_VERSION, GuidedWalkthrough } from "./components/product/GuidedWalkthrough";
 import { Profitability } from "./components/product/Profitability";
 import { ProjectSetup } from "./components/product/ProjectSetup";
 import { ResourcePlanner } from "./components/product/ResourcePlanner";
 import { TaskBoard } from "./components/product/TaskBoard";
 import { campaign, demoSteps, type DemoStep } from "./data/cocaColaCampaign";
+import { guidedDemoSteps, type GuidedDemoTarget } from "./data/guidedDemo";
 import { stepDelay } from "./motion/transitions";
 
 const stepDurations: Record<DemoStep, number> = {
@@ -68,6 +70,8 @@ type WorkspaceView =
   | "resources"
   | "profitability";
 
+type TourView = GuidedDemoTarget["view"] | null;
+
 const railItems: Array<{ icon: IconDefinition; label: string; workspace: WorkspaceView | "home" }> = [
   { icon: faHouse, label: "Home", workspace: "home" },
   { icon: faUsers, label: "Clients", workspace: "clients" },
@@ -86,6 +90,9 @@ export function DemoApp() {
   const [activeWorkspace, setActiveWorkspace] = useState<WorkspaceView | null>(initialRoute.workspace);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isAutoPlaying, setIsAutoPlaying] = useState(false);
+  const [isGuidedDemoActive, setIsGuidedDemoActive] = useState(() => readGuidedDemoPreference());
+  const [restartGuidedDemo, setRestartGuidedDemo] = useState<(() => void) | null>(null);
+  const [tourView, setTourView] = useState<TourView>(null);
 
   const activeIndex = useMemo(
     () => demoSteps.findIndex((step) => step.id === activeStep),
@@ -106,9 +113,29 @@ export function DemoApp() {
     return () => window.clearTimeout(timer);
   }, [activeIndex, activeStep, isAutoPlaying]);
 
+  const setGuidedDemoActive = useCallback((active: boolean) => {
+    setIsGuidedDemoActive(active);
+    window.localStorage.setItem("skills-workflow-guided-demo-active", active ? "true" : "false");
+  }, []);
+
+  const navigateForGuidedDemo = useCallback((target: GuidedDemoTarget) => {
+    setIsAutoPlaying(false);
+    setIsChatOpen(false);
+    setActiveWorkspace(null);
+    setTourView(target.view ?? null);
+    setActiveStep(target.step);
+  }, []);
+
+  const handleManualNavigation = useCallback(() => {
+    setGuidedDemoActive(false);
+    setIsAutoPlaying(false);
+    setTourView(null);
+  }, [setGuidedDemoActive]);
+
   return (
     <AppShell activeStep={activeStep} onStepChange={(step) => {
       setActiveWorkspace(null);
+      setTourView(null);
       setActiveStep(step);
     }}>
       <section className="demo-stage" key={`${activeStep}-${activeWorkspace ?? "flow"}`}>
@@ -123,7 +150,17 @@ export function DemoApp() {
           </div>
           <div className="stage-actions">
             <button className="ghost-button" onClick={() => {
+              if (isGuidedDemoActive) {
+                setGuidedDemoActive(false);
+                return;
+              }
+              restartGuidedDemo?.();
+            }}>
+              {isGuidedDemoActive ? "Exit guided demo" : "Start guided demo"}
+            </button>
+            <button className="ghost-button" onClick={() => {
               setActiveWorkspace(null);
+              setTourView(null);
               setIsAutoPlaying((value) => !value);
             }}>
               {isAutoPlaying ? "Pause flow" : "Play flow"}
@@ -149,9 +186,9 @@ export function DemoApp() {
                 className={activeStep === "request" ? "notification-trigger has-alert" : "notification-trigger"}
                 aria-label="Alerts"
                 onClick={() => {
+                  handleManualNavigation();
                   setActiveWorkspace(null);
                   setActiveStep("request");
-                  setIsAutoPlaying(false);
                 }}
               >
                 <FontAwesomeIcon icon={faBell} />
@@ -166,9 +203,10 @@ export function DemoApp() {
                 <button
                   aria-label={item.label}
                   className={index === activeRailIndex ? "active" : ""}
+                  data-tour-anchor={item.workspace === "resources" ? "resources-sidebar-button" : undefined}
                   key={item.label}
                   onClick={() => {
-                    setIsAutoPlaying(false);
+                    handleManualNavigation();
                     if (item.workspace === "home") {
                       setActiveWorkspace(null);
                       setActiveStep("request");
@@ -188,8 +226,11 @@ export function DemoApp() {
               ) : (
                 <StepContent
                   step={activeStep}
+                  guidedMode={isGuidedDemoActive}
+                  tourView={tourView}
                   onNavigate={(step) => {
                     setActiveWorkspace(null);
+                    setTourView(null);
                     setActiveStep(step);
                   }}
                 />
@@ -197,6 +238,13 @@ export function DemoApp() {
             </div>
           </div>
           {isChatOpen && <ChatDrawer onClose={() => setIsChatOpen(false)} />}
+          <GuidedWalkthrough
+            active={isGuidedDemoActive}
+            onActiveChange={setGuidedDemoActive}
+            onNavigate={navigateForGuidedDemo}
+            onRestartReady={(restart) => setRestartGuidedDemo(() => restart)}
+            steps={guidedDemoSteps}
+          />
         </div>
       </section>
     </AppShell>
@@ -326,10 +374,14 @@ function ChatDrawer({ onClose }: { onClose: () => void }) {
 }
 
 function StepContent({
+  guidedMode,
   step,
+  tourView,
   onNavigate,
 }: {
+  guidedMode: boolean;
   step: DemoStep;
+  tourView: TourView;
   onNavigate: (step: DemoStep) => void;
 }) {
   if (step === "request") {
@@ -399,7 +451,7 @@ function StepContent({
             ))}
           </div>
         </div>
-        <div className="request-notification slide-in" style={stepDelay(520)}>
+        <div className="request-notification slide-in" data-tour-anchor="client-request" style={stepDelay(520)}>
           <div className="brand-avatar client-logo-badge">
             <img src={campaign.clientLogo} alt={campaign.client} />
           </div>
@@ -409,12 +461,14 @@ function StepContent({
             <span>{campaign.campaign}</span>
             <em>Scope: website, 15s video and 3D banner</em>
           </div>
-          <HotspotButton
-            icon="magic"
-            label="Create Budget"
-            tooltip="Click the notification to generate the budget from the incoming request."
-            onClick={() => onNavigate("budget")}
-          />
+          {!guidedMode && (
+            <HotspotButton
+              icon="magic"
+              label="Create Budget"
+              tooltip="Click the notification to generate the budget from the incoming request."
+              onClick={() => onNavigate("budget")}
+            />
+          )}
         </div>
       </div>
     );
@@ -423,14 +477,16 @@ function StepContent({
   if (step === "budget") {
     return (
       <div className="focused-screen budget-opening-screen">
-        <BudgetBuilder />
-        <HotspotButton
-          className="top-right-action budget-send-action"
-          icon="send"
-          label="Send"
-          tooltip="Send the estimate for client approval."
-          onClick={() => onNavigate("approval")}
-        />
+        <BudgetBuilder initialTab={tourView === "budgetFeed" ? "FEED" : undefined} />
+        {!guidedMode && (
+          <HotspotButton
+            className="top-right-action budget-send-action"
+            icon="send"
+            label="Send"
+            tooltip="Send the estimate for client approval."
+            onClick={() => onNavigate("approval")}
+          />
+        )}
       </div>
     );
   }
@@ -438,7 +494,11 @@ function StepContent({
   if (step === "approval") {
     return (
       <div className="focused-screen approval-flow-screen clickable-panel">
-        <BudgetBuilder />
+        <BudgetBuilder
+          feedStageActionLabel="Request changes"
+          feedStageLabel="Approve by Client"
+          initialTab={tourView === "budgetFeed" ? "FEED" : undefined}
+        />
         <aside className="approval-status-panel">
           <span className="approval-check">
             <FontAwesomeIcon icon={faCheck} />
@@ -459,18 +519,20 @@ function StepContent({
               </div>
             ))}
           </div>
-          <div className="approval-project-handoff">
+          <div className="approval-project-handoff" data-tour-anchor="approval-project">
             <strong>Next: create project</strong>
             <span>Budget, scope, dates and deliverables will move into the project workspace.</span>
           </div>
         </aside>
-        <HotspotButton
-          className="top-right-action approval-next-action"
-          icon="magic"
-          label="Project"
-          tooltip="The budget is approved. Go to the project screen."
-          onClick={() => onNavigate("project")}
-        />
+        {!guidedMode && (
+          <HotspotButton
+            className="top-right-action approval-next-action"
+            icon="magic"
+            label="Project"
+            onClick={() => onNavigate("project")}
+            tooltip="The budget is approved. Go to the project screen."
+          />
+        )}
       </div>
     );
   }
@@ -478,14 +540,32 @@ function StepContent({
   if (step === "project") {
     return (
       <div className="clickable-panel">
-        <ProjectSetup />
-        <HotspotButton
-          className="top-right-action"
-          icon="check"
-          label="Tasks"
-          tooltip="Open the tasks automatically created from the budget."
-          onClick={() => onNavigate("tasks")}
-        />
+        <div data-tour-anchor="project-overview">
+          <ProjectSetup
+            initialTab={
+              tourView === "documents"
+                ? "FEED"
+                : tourView === "gantt"
+                  ? "GANTT"
+                  : tourView === "kanban"
+                    ? "KANBAN"
+                    : tourView === "calendar"
+                      ? "CALENDAR"
+                      : tourView === "jobs"
+                        ? "KANBAN BY PERSON"
+                        : undefined
+            }
+          />
+        </div>
+        {!guidedMode && (
+          <HotspotButton
+            className="top-right-action"
+            icon="check"
+            label="Tasks"
+            onClick={() => onNavigate("tasks")}
+            tooltip="Open the tasks automatically created from the budget."
+          />
+        )}
       </div>
     );
   }
@@ -493,13 +573,17 @@ function StepContent({
   if (step === "tasks") {
     return (
       <div className="clickable-panel">
-        <TaskBoard />
-        <HotspotButton
-          className="top-right-action"
-          label="Plan"
-          tooltip="Move to resource planning and assign the right people."
-          onClick={() => onNavigate("resources")}
-        />
+        <div data-tour-anchor="phase-tasks">
+          <TaskBoard />
+        </div>
+        {!guidedMode && (
+          <HotspotButton
+            className="top-right-action"
+            label="Plan"
+            onClick={() => onNavigate("resources")}
+            tooltip="Move to resource planning and assign the right people."
+          />
+        )}
       </div>
     );
   }
@@ -508,13 +592,15 @@ function StepContent({
     return (
       <div className="clickable-panel">
         <ResourcePlanner />
-        <HotspotButton
-          className="top-right-action"
-          icon="play"
-          label="Start"
-          tooltip="Start execution once the team has capacity."
-          onClick={() => onNavigate("execution")}
-        />
+        {!guidedMode && (
+          <HotspotButton
+            className="top-right-action"
+            icon="play"
+            label="Start"
+            onClick={() => onNavigate("execution")}
+            tooltip="Start execution once the team has capacity."
+          />
+        )}
       </div>
     );
   }
@@ -523,12 +609,14 @@ function StepContent({
     return (
       <div className="clickable-panel">
         <ExecutionProofing />
-        <HotspotButton
-          className="top-right-action"
-          label="Review"
-          tooltip="Open the approval/proofing step."
-          onClick={() => onNavigate("proofing")}
-        />
+        {!guidedMode && (
+          <HotspotButton
+            className="top-right-action"
+            label="Review"
+            onClick={() => onNavigate("proofing")}
+            tooltip="Open the approval/proofing step."
+          />
+        )}
       </div>
     );
   }
@@ -537,12 +625,14 @@ function StepContent({
     return (
       <div className="clickable-panel">
         <ExecutionProofing />
-        <HotspotButton
-          className="top-right-action"
-          label="Track"
-          tooltip="Move to profitability and plan-vs-actual tracking."
-          onClick={() => onNavigate("profitability")}
-        />
+        {!guidedMode && (
+          <HotspotButton
+            className="top-right-action"
+            label="Track"
+            onClick={() => onNavigate("profitability")}
+            tooltip="Move to profitability and plan-vs-actual tracking."
+          />
+        )}
       </div>
     );
   }
@@ -554,8 +644,8 @@ function HotspotButton({
   className = "",
   icon,
   label,
-  tooltip,
   onClick,
+  tooltip,
 }: {
   className?: string;
   icon?: "send" | "magic" | "check" | "play";
@@ -650,4 +740,10 @@ function getInitialRoute(): { step: DemoStep; workspace: WorkspaceView | null } 
     step: validWorkspace ? "request" : validStep,
     workspace: validWorkspace,
   };
+}
+
+function readGuidedDemoPreference() {
+  if (typeof window === "undefined") return true;
+  if (window.localStorage.getItem("skills-workflow-guided-demo-version") !== GUIDED_DEMO_VERSION) return true;
+  return window.localStorage.getItem("skills-workflow-guided-demo-active") !== "false";
 }

@@ -7,9 +7,8 @@ import {
   faReceipt,
   faScrewdriverWrench,
   faUserGroup,
-  faWandMagicSparkles,
 } from "@fortawesome/free-solid-svg-icons";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Card } from "../ui/Card";
 import { campaign } from "../../data/cocaColaCampaign";
 import { FeedDocumentView } from "./DocumentFrame";
@@ -87,11 +86,6 @@ type BudgetCostRow = {
 
 const deliverableNameFromGroup = (name: string) => name.replace(/^\d+\.\s*/, "");
 
-const totalResourceCostFor = (deliverable: string) =>
-  resourceGroups
-    .filter((group) => deliverableNameFromGroup(group.deliverable) === deliverable)
-    .reduce((sum, group) => sum + group.rows.reduce((groupSum, row) => groupSum + row.cost * row.hours, 0), 0);
-
 const totalExternalCostFor = (
   rows: Array<{ deliverable: string; quantity: number; unit: number }>,
   deliverable: string,
@@ -100,35 +94,15 @@ const totalExternalCostFor = (
     .filter((row) => row.deliverable === deliverable)
     .reduce((sum, row) => sum + row.quantity * row.unit, 0);
 
-const deliverableQuotes = deliverables.map((item) => {
-  const resources = totalResourceCostFor(item.name);
-  const serviceCosts = totalExternalCostFor(services, item.name);
-  const expensesCosts = totalExternalCostFor(expenses, item.name);
-  const totalCost = resources + serviceCosts + expensesCosts;
-  const projectManagementShare = item.id === "1" ? 1300 : item.id === "2" ? 250 : 100;
-  const totalIncome = totalCost + projectManagementShare;
-
-  return {
-    ...item,
-    resources,
-    serviceCosts,
-    expensesCosts,
-    totalCost,
-    totalIncome,
-  };
-});
-
-const sectionTotals = {
-  deliverables: deliverableQuotes.reduce((sum, item) => sum + item.totalCost, 0),
-  resources: deliverableQuotes.reduce((sum, item) => sum + item.resources, 0),
-  services: deliverableQuotes.reduce((sum, item) => sum + item.serviceCosts, 0),
-  expenses: deliverableQuotes.reduce((sum, item) => sum + item.expensesCosts, 0),
-  income: deliverableQuotes.reduce((sum, item) => sum + item.totalIncome, 0),
-  hours: resourceGroups.reduce((sum, group) => sum + group.rows.reduce((groupSum, row) => groupSum + row.hours, 0), 0),
+type BudgetBuilderProps = {
+  feedStageActionLabel?: string;
+  feedStageLabel?: string;
+  initialTab?: string;
 };
 
-export function BudgetBuilder() {
-  const [selectedTab, setSelectedTab] = useState("QUOTES");
+export function BudgetBuilder({ feedStageActionLabel, feedStageLabel, initialTab }: BudgetBuilderProps) {
+  const [selectedTab, setSelectedTab] = useState(initialTab ?? "QUOTES");
+  const [hoursByOrder, setHoursByOrder] = useState<Record<string, number>>({});
   const [openSections, setOpenSections] = useState({
     resources: true,
     services: false,
@@ -138,12 +112,60 @@ export function BudgetBuilder() {
     "Landing Page": true,
   });
   const tabs = ["FEED", "CHECKLIST", "INFO", "QUOTES", "ESTIMATE BUILDER", "EXPENSES", "PROFITABILITY"];
+  const hoursFor = (order: string, fallback: number) => hoursByOrder[order] ?? fallback;
+  const totalResourceCostForQuote = (deliverable: string) =>
+    resourceGroups
+      .filter((group) => deliverableNameFromGroup(group.deliverable) === deliverable)
+      .reduce(
+        (sum, group) => sum + group.rows.reduce((groupSum, row) => groupSum + row.cost * hoursFor(row.order, row.hours), 0),
+        0,
+      );
+  const quoteDeliverables = deliverables.map((item) => {
+    const resources = totalResourceCostForQuote(item.name);
+    const serviceCosts = totalExternalCostFor(services, item.name);
+    const expensesCosts = totalExternalCostFor(expenses, item.name);
+    const totalCost = resources + serviceCosts + expensesCosts;
+    const projectManagementShare = item.id === "1" ? 1300 : item.id === "2" ? 250 : 100;
+    const totalIncome = totalCost + projectManagementShare;
+
+    return {
+      ...item,
+      expensesCosts,
+      resources,
+      serviceCosts,
+      totalCost,
+      totalIncome,
+    };
+  });
+  const quoteTotals = {
+    deliverables: quoteDeliverables.reduce((sum, item) => sum + item.totalCost, 0),
+    resources: quoteDeliverables.reduce((sum, item) => sum + item.resources, 0),
+    services: quoteDeliverables.reduce((sum, item) => sum + item.serviceCosts, 0),
+    expenses: quoteDeliverables.reduce((sum, item) => sum + item.expensesCosts, 0),
+    income: quoteDeliverables.reduce((sum, item) => sum + item.totalIncome, 0),
+  };
   const toggleSection = (section: keyof typeof openSections) => {
     setOpenSections((current) => ({ ...current, [section]: !current[section] }));
   };
   const toggleDeliverable = (deliverable: string) => {
     setOpenDeliverables((current) => ({ ...current, [deliverable]: !current[deliverable] }));
   };
+
+  useEffect(() => {
+    setSelectedTab(initialTab ?? "QUOTES");
+  }, [initialTab]);
+
+  useEffect(() => {
+    const handleGuidedStepComplete = (event: Event) => {
+      const stepId = (event as CustomEvent<{ id?: string }>).detail?.id;
+      if (stepId === "estimate-budget") {
+        setHoursByOrder((current) => ({ ...current, "1.2": 20 }));
+      }
+    };
+
+    window.addEventListener("guided-demo-step-complete", handleGuidedStepComplete);
+    return () => window.removeEventListener("guided-demo-step-complete", handleGuidedStepComplete);
+  }, []);
 
   return (
     <Card className="budget-card">
@@ -159,21 +181,23 @@ export function BudgetBuilder() {
               <small>{campaign.client} <span>/</span> 2026 <span>/</span> Contract <span>/</span> {campaign.campaign}</small>
             </div>
           </div>
-          <button className="ai-fab" aria-label="AI budget assistant">
-            <FontAwesomeIcon icon={faWandMagicSparkles} />
-          </button>
         </div>
-        <div className="budget-tabs">
-          {tabs.map((tab) => (
-            <button className={tab === selectedTab ? "active" : ""} key={tab} onClick={() => setSelectedTab(tab)}>
+          <div className="budget-tabs">
+            {tabs.map((tab) => (
+            <button
+              className={tab === selectedTab ? "active" : ""}
+              data-tour-anchor={tab === "FEED" ? "budget-feed-tab" : undefined}
+              key={tab}
+              onClick={() => setSelectedTab(tab)}
+            >
               {tab}
             </button>
           ))}
         </div>
       </header>
       <div className="budget-ai-sweep" aria-hidden="true" />
-      {selectedTab === "FEED" ? <FeedDocumentView /> : <div className="budget-quote-workspace">
-        <section className="budget-deliverables-panel">
+      {selectedTab === "FEED" ? <FeedDocumentView feedStageActionLabel={feedStageActionLabel} feedStageLabel={feedStageLabel} /> : <div className="budget-quote-workspace">
+        <section className="budget-deliverables-panel" data-tour-anchor="estimate-budget">
           <header>
             <strong>Deliverables</strong>
             <div className="budget-toggle-group">
@@ -191,7 +215,7 @@ export function BudgetBuilder() {
               <span>Total income</span>
               <span>Approved</span>
             </div>
-            {deliverableQuotes.map((item) => (
+            {quoteDeliverables.map((item) => (
               <div className="budget-deliverable-row" key={item.id}>
                 <span>{item.id}</span>
                 <strong>{item.name}</strong>
@@ -207,8 +231,8 @@ export function BudgetBuilder() {
               <strong>Total estimate</strong>
               <span />
               <span />
-              <span>{formatCurrency(sectionTotals.deliverables)}</span>
-              <span>{formatCurrency(sectionTotals.income)}</span>
+              <span>{formatCurrency(quoteTotals.deliverables)}</span>
+              <span>{formatCurrency(quoteTotals.income)}</span>
               <span />
             </div>
           </div>
@@ -218,7 +242,7 @@ export function BudgetBuilder() {
           <button className="budget-section-header" onClick={() => toggleSection("resources")}>
             <span><FontAwesomeIcon icon={openSections.resources ? faChevronDown : faChevronRight} /></span>
             <strong><FontAwesomeIcon icon={faUserGroup} /> Resources</strong>
-            <em>{formatCurrency(sectionTotals.resources)}</em>
+            <em>{formatCurrency(quoteTotals.resources)}</em>
           </button>
           {openSections.resources && <div className="budget-resource-table">
             <div className="budget-resource-row head">
@@ -243,21 +267,29 @@ export function BudgetBuilder() {
                 <button className="budget-resource-group-title" type="button" onClick={() => toggleDeliverable(deliverableName)}>
                   <FontAwesomeIcon icon={isOpen ? faChevronDown : faChevronRight} />
                   <strong>{group.deliverable}</strong>
-                  <em>{formatCurrency(group.rows.reduce((sum, row) => sum + row.cost * row.hours, 0))}</em>
+                  <em>{formatCurrency(group.rows.reduce((sum, row) => sum + row.cost * hoursFor(row.order, row.hours), 0))}</em>
                 </button>
-                {isOpen && group.rows.map((row) => (
-                  <div className="budget-resource-row" key={`${group.deliverable}-${row.order}`}>
+                {isOpen && group.rows.map((row) => {
+                  const hours = hoursFor(row.order, row.hours);
+                  return (
+                  <div
+                    className={hoursByOrder[row.order] === undefined ? "budget-resource-row" : "budget-resource-row adjusted"}
+                    key={`${group.deliverable}-${row.order}`}
+                  >
                     <span>{row.order}</span>
                     <strong>{row.role}</strong>
                     <span>{row.user}</span>
                     <span>{formatCurrency(row.rate)}</span>
                     <span>{formatCurrency(row.cost)}</span>
-                    <span>{row.hours}</span>
-                    <span>{((row.hours / 180) * 100).toFixed(2)}%</span>
-                    <span>{formatCurrency(row.cost * row.hours)}</span>
+                    <span className="budget-hours-cell" data-tour-anchor={row.order === "1.2" ? "budget-hours" : undefined}>
+                      <strong>{hours}</strong>
+                    </span>
+                    <span>{((hours / 180) * 100).toFixed(2)}%</span>
+                    <span>{formatCurrency(row.cost * hours)}</span>
                     <span><FontAwesomeIcon icon={faCircleCheck} /></span>
                   </div>
-                ))}
+                  );
+                })}
                     </>
                   );
                 })()}
@@ -270,7 +302,7 @@ export function BudgetBuilder() {
           <button className="budget-section-header" onClick={() => toggleSection("services")}>
             <span><FontAwesomeIcon icon={openSections.services ? faChevronDown : faChevronRight} /></span>
             <strong><FontAwesomeIcon icon={faScrewdriverWrench} /> Services</strong>
-            <em>{formatCurrency(sectionTotals.services)}</em>
+            <em>{formatCurrency(quoteTotals.services)}</em>
           </button>
           {openSections.services && (
             <BudgetCostTable
@@ -285,7 +317,7 @@ export function BudgetBuilder() {
           <button className="budget-section-header" onClick={() => toggleSection("expenses")}>
             <span><FontAwesomeIcon icon={openSections.expenses ? faChevronDown : faChevronRight} /></span>
             <strong><FontAwesomeIcon icon={faReceipt} /> Expenses</strong>
-            <em>{formatCurrency(sectionTotals.expenses)}</em>
+            <em>{formatCurrency(quoteTotals.expenses)}</em>
           </button>
           {openSections.expenses && (
             <BudgetCostTable

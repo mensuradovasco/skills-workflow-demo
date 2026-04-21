@@ -26,7 +26,7 @@ export function ExecutionProofing() {
       title="Proofing"
     >
       <div className="proofing-document">
-        <section className="proof-sidebar">
+        <section className="proof-sidebar" data-tour-anchor="deliverables">
           <h4>Approval queue</h4>
           {proofQueue.map(({ title, state, icon }) => (
             <article className="proof-list-item" key={title}>
