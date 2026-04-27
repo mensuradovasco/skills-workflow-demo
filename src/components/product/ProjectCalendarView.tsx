@@ -86,15 +86,11 @@ export function ProjectCalendarView() {
           <small>Date</small>
           <button type="button">End Date</button>
         </div>
-        <label className="project-calendar-search">
-          <input placeholder="Search" />
-        </label>
-      </div>
-
-      <div className="project-calendar-monthbar">
-        <button type="button" aria-label="Previous month">‹</button>
-        <strong>June 2026</strong>
-        <button type="button" aria-label="Next month">›</button>
+        <div className="project-calendar-monthbar">
+          <button type="button" aria-label="Previous month">‹</button>
+          <strong>June 2026</strong>
+          <button type="button" aria-label="Next month">›</button>
+        </div>
       </div>
 
       <div className="project-calendar-board">

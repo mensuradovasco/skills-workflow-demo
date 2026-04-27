@@ -19,6 +19,7 @@ const initialRows: GanttRow[] = [...projectTimelineRows];
 
 export function GanttView() {
   const [items, setItems] = useState(initialRows);
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [interaction, setInteraction] = useState<{
     chartWidth: number;
     index: number;
@@ -27,6 +28,20 @@ export function GanttView() {
     startX: number;
     width: number;
   } | null>(null);
+
+  const toggleCollapsed = (wbs: string) => {
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(wbs)) next.delete(wbs);
+      else next.add(wbs);
+      return next;
+    });
+  };
+
+  const visibleItems = items.filter((row) => {
+    const parentWbs = row.wbs.includes(".") ? row.wbs.split(".")[0] : null;
+    return !parentWbs || !collapsed.has(parentWbs);
+  });
 
   useEffect(() => {
     if (!interaction) return;
@@ -106,11 +121,28 @@ export function GanttView() {
             <span>Executors</span>
             <span>Stage</span>
           </div>
-          {items.map((row, index) => (
-            <div className="gantt-row" key={`${row.wbs}-${row.name}`}>
+          {visibleItems.map((row, index) => {
+            const isParent = row.type === "Phase";
+            const depth = (row.wbs.match(/\./g) ?? []).length;
+            const isCollapsed = collapsed.has(row.wbs);
+            const rowClass = `gantt-row${isParent ? " is-parent" : ""}${depth > 0 ? " is-child" : ""}`;
+            return (
+            <div className={rowClass} key={`${row.wbs}-${row.name}`}>
               <span>{index + 1}</span>
               <span>{row.wbs}</span>
-              <strong>{row.name}</strong>
+              <strong style={depth > 0 ? { paddingLeft: `${8 + depth * 14}px` } : undefined}>
+                {isParent && (
+                  <button
+                    className={`gantt-row-caret${isCollapsed ? " is-collapsed" : ""}`}
+                    onClick={() => toggleCollapsed(row.wbs)}
+                    aria-label={isCollapsed ? `Expand ${row.name}` : `Collapse ${row.name}`}
+                    type="button"
+                  >
+                    ▾
+                  </button>
+                )}
+                {row.name}
+              </strong>
               <span>{row.start}</span>
               <span>{row.end}</span>
               <span>{row.duration}</span>
@@ -122,7 +154,8 @@ export function GanttView() {
               </span>
               <span><i className={`stage-dot ${row.color}`} />{row.stage}</span>
             </div>
-          ))}
+            );
+          })}
         </div>
         <div className="gantt-chart">
           <div className="gantt-months">
@@ -131,7 +164,7 @@ export function GanttView() {
             <span>2026 June</span>
             <span>2026 July</span>
           </div>
-          {items.map((row, index) => (
+          {visibleItems.map((row, index) => (
             <div className="gantt-track" key={`${row.wbs}-${row.name}-bar`}>
               <span
                 className={`gantt-bar ${row.color} ${interaction?.index === index ? "editing" : ""}`}
