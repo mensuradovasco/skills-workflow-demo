@@ -20,7 +20,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
-import { campaign, projectWorkItems } from "../../data/cocaColaCampaign";
+import { campaign, projectTimelineRows, projectWorkItems } from "../../data/cocaColaCampaign";
 
 type DocumentFrameProps = {
   activeTab?: string;
@@ -121,18 +121,20 @@ export function DocumentFrame({
           </label>
         </div>
       )}
-      {renderTabContent(selectedTab, activeTab, children, {
-        calendarContent,
-        feedChecklist,
-        feedDescriptionContent,
-        feedStageActionAnchor,
-        feedStageActionLabel,
-        feedStageLabel,
-        feedStageTimestamp,
-        feedTeamAnimated,
-        jobsContent,
-        onFeedStageAction,
-      })}
+      <div className="document-tab-content" key={selectedTab}>
+        {renderTabContent(selectedTab, activeTab, children, {
+          calendarContent,
+          feedChecklist,
+          feedDescriptionContent,
+          feedStageActionAnchor,
+          feedStageActionLabel,
+          feedStageLabel,
+          feedStageTimestamp,
+          feedTeamAnimated,
+          jobsContent,
+          onFeedStageAction,
+        })}
+      </div>
     </section>
   );
 }
@@ -504,41 +506,96 @@ function ProjectKanbanView() {
             <small>{column.cards.length}</small>
           </header>
           {column.cards.map((card, index) => (
-            <article className="kanban-card" key={card.reference}>
-              <div className="kanban-card-strip">
-                <span><FontAwesomeIcon icon={faListCheck} /></span>
-                <strong>{card.name}</strong>
-              </div>
-              <div className="kanban-card-body">
-                <div className="kanban-card-line">
-                  <span className="kanban-card-icon brand"><img src={campaign.clientLogo} alt="" /></span>
-                  <p>{campaign.client}</p>
-                </div>
-                <div className="kanban-card-line">
-                  <span className="kanban-card-icon campaign"><FontAwesomeIcon icon={faClipboardCheck} /></span>
-                  <p>{campaign.campaign}</p>
-                </div>
-                <span className="kanban-card-chip">{card.channel}</span>
-                <div className="kanban-card-status">
-                  <FontAwesomeIcon icon={faCircle} />
-                  <span>{card.stage}</span>
-                </div>
-                <div className="kanban-card-meta">
-                  <span className="date"><FontAwesomeIcon icon={faCalendarDays} />{card.dueDate}</span>
-                  <span className="comments"><FontAwesomeIcon icon={faCommentDots} />{card.comments}</span>
-                  <div className="kanban-card-avatars">
-                    {campaign.team.slice(0, index % 2 === 0 ? 3 : 2).map((member) => (
-                      <img className="avatar photo" src={member.avatar} alt="" key={member.name} />
-                    ))}
-                  </div>
-                  <small>{card.reference}</small>
-                </div>
-              </div>
-            </article>
+            <KanbanWorkCard card={card} index={index} key={card.reference} />
           ))}
         </section>
       ))}
     </div>
+  );
+}
+
+function findParentName(wbs: string): string | null {
+  if (!wbs.includes(".")) return null;
+  const parentWbs = wbs.split(".")[0];
+  const parent = projectTimelineRows.find((row) => row.wbs === parentWbs);
+  return parent?.name ?? null;
+}
+
+type KanbanWorkCardData = {
+  name: string;
+  type: string;
+  stage: string;
+  start: string;
+  end: string;
+  progress: string;
+  comments: number;
+  reference: string;
+  wbs: string;
+  priority?: string;
+  tags?: ReadonlyArray<string>;
+};
+
+export function KanbanWorkCard({ card, index }: { card: KanbanWorkCardData; index: number }) {
+  const parent = findParentName(card.wbs);
+  return (
+    <article className="kanban-card">
+      <div className="kanban-card-strip">
+        <span><FontAwesomeIcon icon={faListCheck} /></span>
+        <strong>{card.name}</strong>
+      </div>
+      <div className="kanban-card-body">
+        <span className="kanban-card-tag type-tag">{card.type}</span>
+        <div className="kanban-card-tags">
+          {card.tags?.map((tag) => (
+            <span className="kanban-card-tag" key={tag}>{tag}</span>
+          ))}
+        </div>
+        <div className="kanban-card-status">
+          <FontAwesomeIcon icon={faCircle} />
+          <span>{card.stage}</span>
+        </div>
+        <div className="kanban-card-meta">
+          <KanbanDateRange start={card.start} end={card.end} progress={parseProgress(card.progress)} />
+          <span className="comments"><FontAwesomeIcon icon={faCommentDots} />{card.comments}</span>
+          <KanbanPriorityMeter level={card.priority} />
+          <div className="kanban-card-avatars">
+            {campaign.team.slice(0, index % 2 === 0 ? 3 : 2).map((member) => (
+              <img className="avatar photo" src={member.avatar} alt="" key={member.name} />
+            ))}
+          </div>
+          <small>{card.reference}</small>
+          {parent && <small className="kanban-card-parent">{parent}</small>}
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function parseProgress(value: string | undefined): number {
+  if (!value) return 0;
+  const n = parseInt(value, 10);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function KanbanPriorityMeter({ level }: { level?: string }) {
+  const filled = level === "High" ? 3 : level === "Medium" ? 2 : 1;
+  const tone = (level ?? "Low").toLowerCase();
+  return (
+    <span className={`priority-meter priority-${tone}`} aria-label={`Priority ${level ?? "Low"}`}>
+      {[1, 2, 3].map((i) => (
+        <i key={i} className={i <= filled ? "filled" : ""} />
+      ))}
+    </span>
+  );
+}
+
+function KanbanDateRange({ start, end, progress }: { start: string; end: string; progress: number }) {
+  const pct = Math.min(Math.max(progress, 0), 100);
+  return (
+    <span className="kanban-date-range">
+      <span className="kanban-date-range-fill" style={{ width: `${pct}%` }} />
+      <span className="kanban-date-range-text">{start} – {end}</span>
+    </span>
   );
 }
 

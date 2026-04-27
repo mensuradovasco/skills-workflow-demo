@@ -1,4 +1,5 @@
 import { campaign, projectWorkItems } from "../../data/cocaColaCampaign";
+import { KanbanWorkCard } from "./DocumentFrame";
 
 export function ProjectPeopleJobsView() {
   return (
@@ -16,11 +17,8 @@ export function ProjectPeopleJobsView() {
               </div>
             </header>
             <div className="project-people-jobs">
-              {jobs.map((job) => (
-                <article className="project-people-job" key={`${person.name}-${job.name}`}>
-                  <strong>{job.name}</strong>
-                  <small>{job.channel}</small>
-                </article>
+              {jobs.map((job, index) => (
+                <KanbanWorkCard card={job} index={index} key={`${person.name}-${job.reference}`} />
               ))}
             </div>
           </section>
