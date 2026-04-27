@@ -11,7 +11,7 @@ import {
   faPeopleArrows,
   faTableCells,
 } from "@fortawesome/free-solid-svg-icons";
-import { campaign } from "../../data/cocaColaCampaign";
+import { campaign, projectWorkItems, resourceBookings } from "../../data/cocaColaCampaign";
 import { DocumentFrame } from "./DocumentFrame";
 
 type BacklogItem = {
@@ -33,16 +33,38 @@ const initialBacklog: BacklogItem[] = [
   { id: "delivery", title: "Delivery List", kind: "Document", days: "1d", color: "#70c44f" },
 ];
 
-const baseBookings = [
-  { person: "Rachel", title: "Concept", start: 0, span: 6, color: "#bdb2f4" },
-  { person: "Rachel", title: "Final approval", start: 16, span: 5, color: "#58b8e4" },
-  { person: "Arthur", title: "Landing page", start: 4, span: 9, color: "#56b9e5" },
-  { person: "Arthur", title: "3D banner", start: 12, span: 6, color: "#4c7bd9" },
-  { person: "Daniel", title: "15s video", start: 10, span: 8, color: "#f4a94a" },
+const resourcePeople = [
+  ...campaign.team,
+  {
+    name: "Mia",
+    role: "Motion Designer",
+    load: 58,
+    skill: "Motion",
+    avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=96&q=80",
+  },
+  {
+    name: "Leo",
+    role: "3D Artist",
+    load: 71,
+    skill: "3D",
+    avatar: "https://images.unsplash.com/photo-1504257432389-52343af06ae3?auto=format&fit=crop&w=96&q=80",
+  },
+  {
+    name: "Sofia",
+    role: "Producer",
+    load: 64,
+    skill: "Planning",
+    avatar: "https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?auto=format&fit=crop&w=96&q=80",
+  },
 ];
 
 export function ResourcePlanner() {
-  const [backlog, setBacklog] = useState(initialBacklog);
+  const [backlog, setBacklog] = useState(
+    initialBacklog.map((item) => {
+      const match = projectWorkItems.find((task) => task.name === item.title);
+      return match ? { ...item, days: match.duration } : item;
+    }),
+  );
   const [dropped, setDropped] = useState<Array<BacklogItem & { person: string; start: number }>>([]);
 
   const handleDrop = (event: DragEvent<HTMLDivElement>, person: string, start: number) => {
@@ -62,10 +84,10 @@ export function ResourcePlanner() {
       tabs={["FEED", "INFO", "GANTT", "RESOURCES", "HOURS", "CALENDAR"]}
       title="Resource Allocation"
     >
-      <div className="allocation-document">
+      <div className="allocation-document" data-tour-anchor="resource-planning">
         <div className="allocation-toolbar">
           <button><FontAwesomeIcon icon={faFilter} /> Auto</button>
-          <label><FontAwesomeIcon icon={faMagnifyingGlass} /><input placeholder="Search" /></label>
+          <label data-tour-anchor="resource-search"><FontAwesomeIcon icon={faMagnifyingGlass} /><input placeholder="Search" /></label>
           <div className="allocation-toolbar-icons">
             {[faTableCells, faArrowsRotate, faCalendarDays, faChevronLeft, faChevronRight].map((icon) => (
               <button key={icon.iconName}><FontAwesomeIcon icon={icon} /></button>
@@ -86,7 +108,7 @@ export function ResourcePlanner() {
               </div>
             </div>
             <div className="allocation-rows">
-              {campaign.team.map((person) => (
+              {resourcePeople.map((person) => (
                 <div
                   className="allocation-row"
                   key={person.name}
@@ -102,10 +124,10 @@ export function ResourcePlanner() {
                   </div>
                   <div className="allocation-track">
                     {calendarDays.map((day, index) => <span className="allocation-cell" key={`${person.name}-${day}-${index}`} />)}
-                    {baseBookings.filter((booking) => booking.person === person.name).map((booking) => (
+                    {resourceBookings.filter((booking) => booking.person === person.name).map((booking) => (
                       <span
                         className="allocation-bar"
-                        key={`${booking.person}-${booking.title}`}
+                        key={`${booking.person}-${booking.project}-${booking.title}`}
                         style={{ "--bar-color": booking.color, "--bar-start": booking.start, "--bar-span": booking.span } as CSSProperties}
                       >
                         {booking.title}
@@ -127,7 +149,7 @@ export function ResourcePlanner() {
           </div>
           <aside className="allocation-backlog">
             <h4>Unassigned work</h4>
-            <p>Drag a deliverable or task onto a resource row to adjust the plan.</p>
+            <p>Drag a Coca-Cola task onto a resource row to compare this project with other bookings.</p>
             {backlog.map((item) => (
               <article
                 draggable

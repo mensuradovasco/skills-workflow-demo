@@ -39,7 +39,12 @@ import {
 import { BudgetBuilder } from "./components/product/BudgetBuilder";
 import { ClientList } from "./components/product/ClientList";
 import { ExecutionProofing } from "./components/product/ExecutionProofing";
-import { GUIDED_DEMO_VERSION, GuidedWalkthrough } from "./components/product/GuidedWalkthrough";
+import {
+  GUIDED_DEMO_STEP_KEY,
+  GUIDED_DEMO_VERSION,
+  GUIDED_DEMO_VERSION_KEY,
+  GuidedWalkthrough,
+} from "./components/product/GuidedWalkthrough";
 import { Profitability } from "./components/product/Profitability";
 import { ProjectSetup } from "./components/product/ProjectSetup";
 import { ResourcePlanner } from "./components/product/ResourcePlanner";
@@ -89,6 +94,7 @@ export function DemoApp() {
   const [activeStep, setActiveStep] = useState<DemoStep>(initialRoute.step);
   const [activeWorkspace, setActiveWorkspace] = useState<WorkspaceView | null>(initialRoute.workspace);
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [isAssistantOpen, setIsAssistantOpen] = useState(false);
   const [isAutoPlaying, setIsAutoPlaying] = useState(false);
   const [isGuidedDemoActive, setIsGuidedDemoActive] = useState(() => readGuidedDemoPreference());
   const [restartGuidedDemo, setRestartGuidedDemo] = useState<(() => void) | null>(null);
@@ -132,6 +138,16 @@ export function DemoApp() {
     setTourView(null);
   }, [setGuidedDemoActive]);
 
+  const isGuidedProxyClick = () => document.body.dataset.guidedClickProxy === "true";
+  const startGuidedDemoFromRequest = useCallback(() => {
+    window.localStorage.setItem(GUIDED_DEMO_VERSION_KEY, GUIDED_DEMO_VERSION);
+    window.localStorage.setItem(GUIDED_DEMO_STEP_KEY, "1");
+    setGuidedDemoActive(true);
+    setActiveWorkspace(null);
+    setTourView(guidedDemoSteps[1]?.target.view ?? null);
+    setActiveStep(guidedDemoSteps[1]?.target.step ?? "budget");
+  }, [setGuidedDemoActive]);
+
   return (
     <AppShell activeStep={activeStep} onStepChange={(step) => {
       setActiveWorkspace(null);
@@ -143,7 +159,6 @@ export function DemoApp() {
           <div>
             <div className="stage-meta">
               <span className="eyebrow">{activeMeta.verb}</span>
-              <span className="flow-step-pill">Step {activeIndex + 1} of {demoSteps.length}</span>
             </div>
             <h2>{stageTitle(activeStep)}</h2>
             <p>{stageDescription(activeStep)}</p>
@@ -158,16 +173,9 @@ export function DemoApp() {
             }}>
               {isGuidedDemoActive ? "Exit guided demo" : "Start guided demo"}
             </button>
-            <button className="ghost-button" onClick={() => {
-              setActiveWorkspace(null);
-              setTourView(null);
-              setIsAutoPlaying((value) => !value);
-            }}>
-              {isAutoPlaying ? "Pause flow" : "Play flow"}
-            </button>
           </div>
         </div>
-        <div className="product-window">
+        <div className={isAssistantOpen ? "product-window with-assistant" : "product-window"}>
           <div className="skills-topbar">
             <div className="skills-logo">
               <img src="/assets/skills-logo-white.png" alt="Skills Workflow" />
@@ -186,7 +194,7 @@ export function DemoApp() {
                 className={activeStep === "request" ? "notification-trigger has-alert" : "notification-trigger"}
                 aria-label="Alerts"
                 onClick={() => {
-                  handleManualNavigation();
+                  if (!isGuidedProxyClick()) handleManualNavigation();
                   setActiveWorkspace(null);
                   setActiveStep("request");
                 }}
@@ -197,47 +205,64 @@ export function DemoApp() {
               <strong>vasco.mensurado</strong>
             </div>
           </div>
-          <div className={`skills-body ${bodyMode}`}>
-            <aside className="app-rail" aria-label="Product navigation">
-              {railItems.map((item, index) => (
-                <button
-                  aria-label={item.label}
-                  className={index === activeRailIndex ? "active" : ""}
-                  data-tour-anchor={item.workspace === "resources" ? "resources-sidebar-button" : undefined}
-                  key={item.label}
-                  onClick={() => {
-                    handleManualNavigation();
-                    if (item.workspace === "home") {
-                      setActiveWorkspace(null);
-                      setActiveStep("request");
-                      return;
-                    }
-                    setActiveWorkspace(item.workspace);
-                  }}
-                  title={item.label}
-                >
-                  <FontAwesomeIcon icon={item.icon} />
-                </button>
-              ))}
-            </aside>
-          <div className="app-content">
-              {activeWorkspace ? (
-                <WorkspaceContent workspace={activeWorkspace} />
-              ) : (
-                <StepContent
-                  step={activeStep}
-                  guidedMode={isGuidedDemoActive}
-                  tourView={tourView}
-                  onNavigate={(step) => {
-                    setActiveWorkspace(null);
-                    setTourView(null);
-                    setActiveStep(step);
-                  }}
-                />
-              )}
+          <div className="product-shell">
+            <div className="product-main">
+              <div className={`skills-body ${bodyMode}`}>
+                <aside className="app-rail" aria-label="Product navigation">
+                  {railItems.map((item, index) => (
+                    <button
+                      aria-label={item.label}
+                      className={index === activeRailIndex ? "active" : ""}
+                      data-tour-anchor={item.workspace === "resources" ? "resources-sidebar-button" : undefined}
+                      key={item.label}
+                      onClick={() => {
+                        if (!isGuidedProxyClick()) handleManualNavigation();
+                        if (item.workspace === "home") {
+                          setActiveWorkspace(null);
+                          setActiveStep("request");
+                          return;
+                        }
+                        setActiveWorkspace(item.workspace);
+                      }}
+                      title={item.label}
+                    >
+                      <FontAwesomeIcon icon={item.icon} />
+                    </button>
+                  ))}
+                </aside>
+                <div className="app-content">
+                  {activeWorkspace ? (
+                    <WorkspaceContent workspace={activeWorkspace} />
+                  ) : (
+                    <StepContent
+                      step={activeStep}
+                      guidedMode={isGuidedDemoActive}
+                      onStartGuidedDemoFromRequest={startGuidedDemoFromRequest}
+                      tourView={tourView}
+                      onNavigate={(step) => {
+                        setActiveWorkspace(null);
+                        setTourView(null);
+                        setActiveStep(step);
+                      }}
+                    />
+                  )}
+                </div>
+              </div>
+              {isChatOpen && <ChatDrawer onClose={() => setIsChatOpen(false)} />}
             </div>
+            {isAssistantOpen && <AssistantPanel onClose={() => setIsAssistantOpen(false)} />}
           </div>
-          {isChatOpen && <ChatDrawer onClose={() => setIsChatOpen(false)} />}
+          {!isAssistantOpen && (
+            <button
+              aria-label="Open assistant"
+              className="assistant-launcher"
+              onClick={() => setIsAssistantOpen(true)}
+              type="button"
+            >
+              <FontAwesomeIcon icon={faComments} />
+              <span>AI Assistant</span>
+            </button>
+          )}
           <GuidedWalkthrough
             active={isGuidedDemoActive}
             onActiveChange={setGuidedDemoActive}
@@ -308,6 +333,44 @@ const chatMessages = [
   },
 ];
 
+const homeCapacity = [
+  {
+    name: "Rachel",
+    role: "Account Management",
+    load: 62,
+    color: "#f5b93f",
+    avatar: campaign.team[0].avatar,
+  },
+  {
+    name: "Arthur",
+    role: "Design",
+    load: 74,
+    color: "#ed6b65",
+    avatar: campaign.team[1].avatar,
+  },
+  {
+    name: "Daniel",
+    role: "Video",
+    load: 68,
+    color: "#ff914d",
+    avatar: campaign.team[2].avatar,
+  },
+  {
+    name: "Sofia",
+    role: "Client Services",
+    load: 45,
+    color: "#63c7c0",
+    avatar: chatMessages[0].avatar,
+  },
+  {
+    name: "Maya",
+    role: "Creative Direction",
+    load: 58,
+    color: "#7d69d8",
+    avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=96&q=80",
+  },
+];
+
 const spotlightImages = [
   "https://images.unsplash.com/photo-1496747611176-843222e1e57c?auto=format&fit=crop&w=420&q=80",
   "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=420&q=80",
@@ -373,23 +436,140 @@ function ChatDrawer({ onClose }: { onClose: () => void }) {
   );
 }
 
+type AssistantMessage = {
+  author: string;
+  mine?: boolean;
+  text: string;
+  time: string;
+};
+
+const assistantMessages: AssistantMessage[] = [
+  {
+    author: "Skills AI Assistant",
+    text: "I can answer questions, find conflicts, draft updates, create follow-up items, and help move work through the system.",
+    time: "Now",
+  },
+  {
+    author: "You",
+    text: "Check resource conflicts for Coca-Cola - Summer Assets.",
+    time: "Now",
+    mine: true,
+  },
+  {
+    author: "Skills AI Assistant",
+    text: "Arthur overlaps with Nike Autumn Refresh after the 3D Banner task, and Rachel has Spotify review time during approvals. I can draft reassignments next.",
+    time: "Now",
+  },
+];
+
+function AssistantPanel({ onClose }: { onClose: () => void }) {
+  const [messages, setMessages] = useState(assistantMessages);
+  const [draft, setDraft] = useState("");
+
+  const sendMessage = () => {
+    const trimmed = draft.trim();
+    if (!trimmed) return;
+
+    const nextMessages: AssistantMessage[] = [
+      ...messages,
+      { author: "You", text: trimmed, time: "Now", mine: true },
+      { author: "Skills AI Assistant", text: getAssistantReply(trimmed), time: "Now" },
+    ];
+
+    setMessages(nextMessages);
+    setDraft("");
+  };
+
+  return (
+    <aside className="chat-drawer assistant-panel" aria-label="Assistant">
+      <header className="chat-drawer-top">
+        <button aria-label="Close assistant" onClick={onClose}>
+          <FontAwesomeIcon icon={faChevronLeft} />
+        </button>
+        <div className="chat-project-title">
+          <span><FontAwesomeIcon icon={faComments} /></span>
+          <div>
+            <strong>Skills AI Assistant</strong>
+            <small>How can I help you today</small>
+          </div>
+        </div>
+        <button aria-label="More assistant actions">
+          <FontAwesomeIcon icon={faEllipsis} />
+        </button>
+      </header>
+      <div className="chat-participants">
+        {campaign.team.slice(0, 3).map((member) => (
+          <img className="avatar photo" src={member.avatar} alt="" key={member.name} />
+        ))}
+        <span>AI</span>
+      </div>
+      <div className="chat-date">AI help across project, budget, tasks, resources, and delivery</div>
+      <div className="chat-thread">
+        {messages.map((message) => (
+          <article className={message.mine ? "chat-message mine" : "chat-message"} key={`${message.author}-${message.time}-${message.text}`}>
+            {!message.mine && <span className="assistant-avatar">AI</span>}
+            <div>
+              {!message.mine && <strong>{message.author}</strong>}
+              <p>{message.text}</p>
+              <small>{message.time}</small>
+            </div>
+          </article>
+        ))}
+      </div>
+      <footer className="chat-composer">
+        <input
+          onChange={(event) => setDraft(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") sendMessage();
+          }}
+          placeholder="Ask the AI assistant to help in the workspace..."
+          value={draft}
+        />
+        <button aria-label="Attach context"><FontAwesomeIcon icon={faPaperclip} /></button>
+        <button aria-label="Send message" onClick={sendMessage}><FontAwesomeIcon icon={faPaperPlane} /></button>
+        <button aria-label="Close assistant" onClick={onClose}><FontAwesomeIcon icon={faXmark} /></button>
+      </footer>
+    </aside>
+  );
+}
+
+function getAssistantReply(message: string) {
+  const lower = message.toLowerCase();
+
+  if (lower.includes("resource") || lower.includes("conflict")) {
+    return "Arthur overlaps with Nike Autumn Refresh after the 3D Banner task, and Rachel has Spotify review time during approvals. I can suggest reassignments or rebalance dates.";
+  }
+
+  if (lower.includes("campaign") || lower.includes("project")) {
+    return "I can help create a new campaign structure, duplicate this workflow, or prepare a project from an approved estimate.";
+  }
+
+  if (lower.includes("budget") || lower.includes("estimate")) {
+    return "I can review the estimate, explain the line items, or help prepare the next approval step.";
+  }
+
+  return "I can help with project setup, tasks, resources, approvals, deliverables, and budget tracking inside this workspace.";
+}
+
 function StepContent({
   guidedMode,
   step,
   tourView,
   onNavigate,
+  onStartGuidedDemoFromRequest,
 }: {
   guidedMode: boolean;
   step: DemoStep;
   tourView: TourView;
   onNavigate: (step: DemoStep) => void;
+  onStartGuidedDemoFromRequest: () => void;
 }) {
   if (step === "request") {
     return (
       <div className="home-screen">
         <div className="home-top-strip">
           <span><FontAwesomeIcon icon={faHouse} /></span>
-          <strong>{campaign.organization}</strong>
+          <strong>Home</strong>
         </div>
         <div className="home-main">
           <div className="welcome-copy">
@@ -426,10 +606,20 @@ function StepContent({
             ))}
           </div>
           <div className="team-cloud">
-            <h4>Team</h4>
-            <div>
-              {campaign.team.concat(campaign.team).map((member, index) => (
-                <img className="avatar photo" src={member.avatar} alt="" key={`${member.name}-${index}`} />
+            <h4>Your Team's Capacity this week</h4>
+            <div className="capacity-list">
+              {homeCapacity.map((member) => (
+                <div className="capacity-row" key={member.name}>
+                  <img className="avatar photo" src={member.avatar} alt={member.name} />
+                  <div className="capacity-copy">
+                    <strong>{member.name}</strong>
+                    <small>{member.role}</small>
+                  </div>
+                  <div className="capacity-meter" aria-label={`${member.name} capacity ${member.load}%`}>
+                    <span style={{ width: `${member.load}%`, background: member.color }} />
+                  </div>
+                  <em>{member.load}%</em>
+                </div>
               ))}
             </div>
           </div>
@@ -466,7 +656,7 @@ function StepContent({
               icon="magic"
               label="Create Budget"
               tooltip="Click the notification to generate the budget from the incoming request."
-              onClick={() => onNavigate("budget")}
+              onClick={onStartGuidedDemoFromRequest}
             />
           )}
         </div>
@@ -498,6 +688,7 @@ function StepContent({
           feedStageActionLabel="Request changes"
           feedStageLabel="Approve by Client"
           initialTab={tourView === "budgetFeed" ? "FEED" : undefined}
+          onProjectNavigate={() => onNavigate("project")}
         />
         <aside className="approval-status-panel">
           <span className="approval-check">
@@ -519,7 +710,7 @@ function StepContent({
               </div>
             ))}
           </div>
-          <div className="approval-project-handoff" data-tour-anchor="approval-project">
+          <div className="approval-project-handoff">
             <strong>Next: create project</strong>
             <span>Budget, scope, dates and deliverables will move into the project workspace.</span>
           </div>

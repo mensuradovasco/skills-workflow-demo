@@ -1,5 +1,5 @@
 import { type MouseEvent, useEffect, useState } from "react";
-import { campaign } from "../../data/cocaColaCampaign";
+import { campaign, projectTimelineRows } from "../../data/cocaColaCampaign";
 
 type GanttRow = {
   color: string;
@@ -15,21 +15,7 @@ type GanttRow = {
   width: number;
 };
 
-const initialRows: GanttRow[] = [
-  { wbs: "1", name: "Concept", type: "Phase", stage: "Approved", start: "03 Jun", end: "07 Jun", duration: "4 days", left: 2, width: 12, color: "green", progress: "100%" },
-  { wbs: "1.1", name: "Define idea", type: "Task", stage: "Approved", start: "03 Jun", end: "05 Jun", duration: "2 days", left: 2, width: 6, color: "green", progress: "100%" },
-  { wbs: "1.2", name: "Quick client approval", type: "Approval", stage: "Approved", start: "06 Jun", end: "07 Jun", duration: "1 day", left: 8, width: 4, color: "green", progress: "100%" },
-  { wbs: "2", name: "Website", type: "Phase", stage: "In progress", start: "08 Jun", end: "18 Jun", duration: "10 days", left: 15, width: 26, color: "blue", progress: "55%" },
-  { wbs: "2.1", name: "Design landing page", type: "Design", stage: "In progress", start: "08 Jun", end: "12 Jun", duration: "4 days", left: 15, width: 12, color: "blue", progress: "70%" },
-  { wbs: "2.2", name: "Build page", type: "Build", stage: "In progress", start: "13 Jun", end: "18 Jun", duration: "5 days", left: 28, width: 13, color: "blue", progress: "35%" },
-  { wbs: "3", name: "Video", type: "Phase", stage: "In progress", start: "16 Jun", end: "20 Jun", duration: "4 days", left: 39, width: 13, color: "cyan", progress: "30%" },
-  { wbs: "3.1", name: "Edit 15s video", type: "Edit", stage: "In progress", start: "16 Jun", end: "20 Jun", duration: "4 days", left: 39, width: 13, color: "cyan", progress: "30%" },
-  { wbs: "4", name: "3D Banner", type: "Phase", stage: "Queued", start: "18 Jun", end: "21 Jun", duration: "3 days", left: 53, width: 10, color: "gold", progress: "0%" },
-  { wbs: "4.1", name: "Create 3D asset", type: "Design", stage: "Queued", start: "18 Jun", end: "21 Jun", duration: "3 days", left: 53, width: 10, color: "gold", progress: "0%" },
-  { wbs: "5", name: "Delivery", type: "Phase", stage: "Ready for delivery", start: "22 Jun", end: "25 Jun", duration: "3 days", left: 68, width: 14, color: "green", progress: "" },
-  { wbs: "5.1", name: "Final approval", type: "Approval", stage: "Client review", start: "22 Jun", end: "24 Jun", duration: "2 days", left: 68, width: 8, color: "blue", progress: "" },
-  { wbs: "5.2", name: "Deliver files", type: "Delivery", stage: "Ready", start: "25 Jun", end: "25 Jun", duration: "1 day", left: 78, width: 4, color: "green", progress: "" },
-];
+const initialRows: GanttRow[] = [...projectTimelineRows];
 
 export function GanttView() {
   const [items, setItems] = useState(initialRows);

@@ -158,6 +158,31 @@ export const campaign = {
   },
 };
 
+export const projectTimelineRows = [
+  { wbs: "1", name: "Concept", type: "Phase", stage: "Approved", start: "03 Jun", end: "07 Jun", duration: "4 days", left: 2, width: 12, color: "green", progress: "100%", owner: "Rachel", channel: "Concept", dueDate: "06/07", comments: 1, reference: "COCA-CONCEPT" },
+  { wbs: "1.1", name: "Define idea", type: "Task", stage: "Approved", start: "03 Jun", end: "05 Jun", duration: "2 days", left: 2, width: 6, color: "green", progress: "100%", owner: "Rachel", channel: "Concept", dueDate: "06/05", comments: 1, reference: "COCA-DEFINE" },
+  { wbs: "1.2", name: "Quick client approval", type: "Approval", stage: "Approved", start: "06 Jun", end: "07 Jun", duration: "1 day", left: 8, width: 4, color: "green", progress: "100%", owner: "Rachel", channel: "Concept", dueDate: "06/07", comments: 1, reference: "COCA-APPROVAL" },
+  { wbs: "2", name: "Website", type: "Phase", stage: "In progress", start: "08 Jun", end: "18 Jun", duration: "10 days", left: 15, width: 26, color: "blue", progress: "55%", owner: "Arthur", channel: "Website", dueDate: "06/18", comments: 2, reference: "COCA-WEBSITE" },
+  { wbs: "2.1", name: "Design landing page", type: "Design", stage: "In progress", start: "08 Jun", end: "12 Jun", duration: "4 days", left: 15, width: 12, color: "blue", progress: "70%", owner: "Arthur", channel: "Website", dueDate: "06/12", comments: 3, reference: "COCA-WEB-DESIGN" },
+  { wbs: "2.2", name: "Build page", type: "Build", stage: "In progress", start: "13 Jun", end: "18 Jun", duration: "5 days", left: 28, width: 13, color: "blue", progress: "35%", owner: "Arthur", channel: "Website", dueDate: "06/18", comments: 1, reference: "COCA-WEB-BUILD" },
+  { wbs: "3.1", name: "Edit 15s video", type: "Edit", stage: "Internal review", start: "16 Jun", end: "20 Jun", duration: "4 days", left: 39, width: 13, color: "cyan", progress: "30%", owner: "Daniel", channel: "Video", dueDate: "06/20", comments: 4, reference: "COCA-VIDEO-15" },
+  { wbs: "4.1", name: "Create 3D asset", type: "Design", stage: "Queued", start: "18 Jun", end: "21 Jun", duration: "3 days", left: 53, width: 10, color: "gold", progress: "0%", owner: "Arthur", channel: "3D Banner", dueDate: "06/21", comments: 2, reference: "COCA-3D-BANNER" },
+  { wbs: "5.1", name: "Final approval", type: "Approval", stage: "Client approval", start: "22 Jun", end: "24 Jun", duration: "2 days", left: 68, width: 8, color: "blue", progress: "", owner: "Rachel", channel: "Delivery", dueDate: "06/24", comments: 1, reference: "COCA-FINAL" },
+  { wbs: "5.2", name: "Deliver files", type: "Delivery", stage: "Ready for delivery", start: "25 Jun", end: "25 Jun", duration: "1 day", left: 78, width: 4, color: "green", progress: "", owner: "Rachel", channel: "Delivery", dueDate: "06/25", comments: 1, reference: "COCA-DELIVERY" },
+] as const;
+
+export const projectWorkItems = projectTimelineRows.filter((item) => item.type !== "Phase");
+
+export const resourceBookings = [
+  { person: "Rachel", title: "Define idea", project: campaign.campaign, start: 0, span: 6, color: "#8f7be8" },
+  { person: "Rachel", title: "Final approval", project: campaign.campaign, start: 16, span: 5, color: "#58b8e4" },
+  { person: "Arthur", title: "Design landing page", project: campaign.campaign, start: 4, span: 8, color: "#56b9e5" },
+  { person: "Arthur", title: "Create 3D asset", project: campaign.campaign, start: 12, span: 6, color: "#4c7bd9" },
+  { person: "Daniel", title: "Edit 15s video", project: campaign.campaign, start: 10, span: 8, color: "#f4a94a" },
+  { person: "Arthur", title: "Nike Autumn Refresh", project: "Nike Autumn Refresh", start: 18, span: 5, color: "#7c8aa5" },
+  { person: "Rachel", title: "Spotify Q3 Review", project: "Spotify Q3 Review", start: 8, span: 4, color: "#6f7c94" },
+] as const;
+
 export const estimateTotals = campaign.estimate.reduce(
   (totals, item) => {
     const total = item.hours * item.rate;

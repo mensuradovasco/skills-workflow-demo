@@ -91,6 +91,14 @@ export const guidedDemoSteps: GuidedDemoStep[] = [
     placement: "right",
   },
   {
+    id: "resource-planning-view",
+    target: { step: "resources" },
+    selector: '[data-tour-anchor="resource-search"]',
+    title: "Resources",
+    body: "Search the resource board to review this project in the context of other team bookings and spot conflicts.",
+    placement: "left",
+  },
+  {
     id: "execution-review",
     target: { step: "execution" },
     selector: '[data-tour-anchor="execution-review"]',

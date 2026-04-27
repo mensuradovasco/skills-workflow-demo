@@ -1,4 +1,4 @@
-import { campaign } from "../../data/cocaColaCampaign";
+import { campaign, projectWorkItems } from "../../data/cocaColaCampaign";
 
 type CalendarCell = {
   date: string;
@@ -12,10 +12,28 @@ type CalendarCell = {
 
 const weekdayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
+const toneByColor = {
+  blue: "blue",
+  cyan: "gold",
+  gold: "green",
+  green: "teal",
+} as const;
+
+const dayByTaskTitle: Record<string, string> = {
+  "Define idea": "03",
+  "Quick client approval": "06",
+  "Design landing page": "08",
+  "Build page": "13",
+  "Edit 15s video": "16",
+  "Create 3D asset": "18",
+  "Final approval": "22",
+  "Deliver files": "25",
+};
+
 const calendarCells: CalendarCell[] = [
   { date: "31", inMonth: false },
-  { date: "01", items: [{ title: "Define idea", owner: "Rachel", tone: "purple" }] },
-  { date: "02", items: [{ title: "Quick client approval", owner: "Rachel", tone: "blue" }] },
+  { date: "01" },
+  { date: "02" },
   { date: "03" },
   { date: "04" },
   { date: "05" },
@@ -49,7 +67,16 @@ const calendarCells: CalendarCell[] = [
   { date: "03", inMonth: false },
   { date: "04", inMonth: false },
   { date: "05", inMonth: false },
-];
+].map((cell) => ({
+  ...cell,
+  items: projectWorkItems
+    .filter((item) => dayByTaskTitle[item.name] === cell.date)
+    .map((item) => ({
+      title: item.name,
+      owner: item.owner,
+      tone: toneByColor[item.color as keyof typeof toneByColor] ?? "purple",
+    })),
+}));
 
 export function ProjectCalendarView() {
   return (

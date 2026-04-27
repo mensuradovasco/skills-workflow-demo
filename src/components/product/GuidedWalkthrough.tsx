@@ -20,6 +20,8 @@ type TargetRect = {
 const STORAGE_KEY = "skills-workflow-guided-demo-step";
 const VERSION_KEY = "skills-workflow-guided-demo-version";
 export const GUIDED_DEMO_VERSION = "budget-feed-workflow-v1";
+export const GUIDED_DEMO_STEP_KEY = STORAGE_KEY;
+export const GUIDED_DEMO_VERSION_KEY = VERSION_KEY;
 
 export function GuidedWalkthrough({
   active,
@@ -185,8 +187,12 @@ export function GuidedWalkthrough({
     const element = document.querySelector<HTMLElement>(currentStep.selector);
 
     if (element) {
+      document.body.dataset.guidedClickProxy = "true";
       element.click();
-      window.setTimeout(goNext, 40);
+      window.setTimeout(() => {
+        delete document.body.dataset.guidedClickProxy;
+        goNext();
+      }, 40);
       return;
     }
 

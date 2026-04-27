@@ -16,24 +16,28 @@ export function AppShell({ activeStep, children, onStepChange }: AppShellProps) 
         <div className="brand-lockup">
           <img src="/assets/skills-logo-white.png" alt="Skills Workflow" />
         </div>
-        <div className="demo-step-status" aria-live="polite">
-          <small>Step {activeIndex + 1} of {demoSteps.length}</small>
-          <strong>{demoSteps[activeIndex].label}</strong>
-        </div>
-        <div className="timeline" aria-label="Demo flow">
-          <div className="timeline-line" />
-          {demoSteps.map((step, index) => (
-            <button
-              className={step.id === activeStep ? "timeline-step active" : "timeline-step"}
-              key={step.id}
-              onClick={() => onStepChange(step.id)}
-            >
-              <span className={index <= activeIndex ? "timeline-dot complete" : "timeline-dot"} />
-              <strong>{step.label}</strong>
-            </button>
-          ))}
-        </div>
       </header>
+      <div className="demo-flow-footer" aria-label="Demo flow progress">
+        <div className="timeline">
+          <div className="timeline-line" aria-hidden="true" />
+          {demoSteps.map((step, index) => {
+            const isActive = step.id === activeStep;
+            const isComplete = activeIndex > index;
+
+            return (
+              <button
+                className={isActive ? "timeline-step active" : "timeline-step"}
+                key={step.id}
+                onClick={() => onStepChange(step.id)}
+                type="button"
+              >
+                <span className={isComplete ? "timeline-dot complete" : "timeline-dot"} data-step={index + 1} />
+                <strong>{step.label}</strong>
+              </button>
+            );
+          })}
+        </div>
+      </div>
       <main>{children}</main>
     </div>
   );

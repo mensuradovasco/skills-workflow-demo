@@ -20,7 +20,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
-import { campaign } from "../../data/cocaColaCampaign";
+import { campaign, projectWorkItems } from "../../data/cocaColaCampaign";
 
 type DocumentFrameProps = {
   activeTab?: string;
@@ -410,33 +410,22 @@ function ProjectKanbanView() {
     {
       title: "Briefing",
       tone: "blue",
-      cards: [
-        { title: "Define idea", brand: "Coca-Cola", campaign: campaign.campaign, channel: "Concept", status: "Approved", dueDate: "06/07", comments: 1, reference: "COCA-CONCEPT" },
-        { title: "Quick client approval", brand: "Coca-Cola", campaign: campaign.campaign, channel: "Concept", status: "Approved", dueDate: "06/08", comments: 1, reference: "COCA-APPROVAL" },
-      ],
+      cards: projectWorkItems.filter((item) => item.stage === "Approved"),
     },
     {
       title: "In progress",
       tone: "gold",
-      cards: [
-        { title: "Design landing page", brand: "Coca-Cola", campaign: campaign.campaign, channel: "Website", status: "Doing", dueDate: "06/18", comments: 3, reference: "COCA-WEB-DESIGN" },
-        { title: "Build page", brand: "Coca-Cola", campaign: campaign.campaign, channel: "Website", status: "Doing", dueDate: "06/19", comments: 1, reference: "COCA-WEB-BUILD" },
-      ],
+      cards: projectWorkItems.filter((item) => item.stage === "In progress"),
     },
     {
       title: "Internal review",
       tone: "green",
-      cards: [
-        { title: "Edit 15s video", brand: "Coca-Cola", campaign: campaign.campaign, channel: "Video", status: "Review", dueDate: "06/20", comments: 4, reference: "COCA-VIDEO-15" },
-        { title: "Create 3D asset", brand: "Coca-Cola", campaign: campaign.campaign, channel: "3D Banner", status: "Review", dueDate: "06/21", comments: 2, reference: "COCA-3D-BANNER" },
-      ],
+      cards: projectWorkItems.filter((item) => item.stage === "Internal review" || item.stage === "Queued"),
     },
     {
       title: "Client approval",
       tone: "red",
-      cards: [
-        { title: "Final approval", brand: "Coca-Cola", campaign: campaign.campaign, channel: "Delivery", status: "Awaiting", dueDate: "06/24", comments: 1, reference: "COCA-FINAL" },
-      ],
+      cards: projectWorkItems.filter((item) => item.stage === "Client approval" || item.stage === "Ready for delivery"),
     },
   ];
 
@@ -453,21 +442,21 @@ function ProjectKanbanView() {
             <article className="kanban-card" key={card.reference}>
               <div className="kanban-card-strip">
                 <span><FontAwesomeIcon icon={faListCheck} /></span>
-                <strong>{card.title}</strong>
+                <strong>{card.name}</strong>
               </div>
               <div className="kanban-card-body">
                 <div className="kanban-card-line">
                   <span className="kanban-card-icon brand"><img src={campaign.clientLogo} alt="" /></span>
-                  <p>{card.brand}</p>
+                  <p>{campaign.client}</p>
                 </div>
                 <div className="kanban-card-line">
                   <span className="kanban-card-icon campaign"><FontAwesomeIcon icon={faClipboardCheck} /></span>
-                  <p>{card.campaign}</p>
+                  <p>{campaign.campaign}</p>
                 </div>
                 <span className="kanban-card-chip">{card.channel}</span>
                 <div className="kanban-card-status">
                   <FontAwesomeIcon icon={faCircle} />
-                  <span>{card.status}</span>
+                  <span>{card.stage}</span>
                 </div>
                 <div className="kanban-card-meta">
                   <span className="date"><FontAwesomeIcon icon={faCalendarDays} />{card.dueDate}</span>

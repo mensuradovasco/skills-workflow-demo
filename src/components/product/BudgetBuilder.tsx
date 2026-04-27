@@ -98,9 +98,10 @@ type BudgetBuilderProps = {
   feedStageActionLabel?: string;
   feedStageLabel?: string;
   initialTab?: string;
+  onProjectNavigate?: () => void;
 };
 
-export function BudgetBuilder({ feedStageActionLabel, feedStageLabel, initialTab }: BudgetBuilderProps) {
+export function BudgetBuilder({ feedStageActionLabel, feedStageLabel, initialTab, onProjectNavigate }: BudgetBuilderProps) {
   const [selectedTab, setSelectedTab] = useState(initialTab ?? "QUOTES");
   const [hoursByOrder, setHoursByOrder] = useState<Record<string, number>>({});
   const [openSections, setOpenSections] = useState({
@@ -178,7 +179,22 @@ export function BudgetBuilder({ feedStageActionLabel, feedStageLabel, initialTab
             </span>
             <div>
               <strong>Budget</strong>
-              <small>{campaign.client} <span>/</span> 2026 <span>/</span> Contract <span>/</span> {campaign.campaign}</small>
+              <small className="budget-hierarchy">
+                <span>{campaign.client}</span>
+                <span>/</span>
+                <span>2026 Contract</span>
+                <span>/</span>
+                <button
+                  className={onProjectNavigate ? "budget-hierarchy-link" : "budget-hierarchy-link is-static"}
+                  data-tour-anchor={onProjectNavigate ? "approval-project" : undefined}
+                  onClick={onProjectNavigate}
+                  type="button"
+                >
+                  Coca-Cola Summer Assets
+                </button>
+                <span>/</span>
+                <span className="budget-hierarchy-current">Summer Assets Budget</span>
+              </small>
             </div>
           </div>
         </div>
