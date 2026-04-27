@@ -1,5 +1,6 @@
 export type DemoStep =
   | "request"
+  | "brief"
   | "budget"
   | "approval"
   | "project"
@@ -11,6 +12,7 @@ export type DemoStep =
 
 export const demoSteps: Array<{ id: DemoStep; label: string; verb: string }> = [
   { id: "request", label: "Request", verb: "Capture" },
+  { id: "brief", label: "Brief", verb: "Structure" },
   { id: "budget", label: "Budget", verb: "Estimate" },
   { id: "approval", label: "Approval", verb: "Approve" },
   { id: "project", label: "Project", verb: "Create" },
