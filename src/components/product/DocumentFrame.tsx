@@ -27,8 +27,14 @@ type DocumentFrameProps = {
   accent?: string;
   calendarContent?: ReactNode;
   children: ReactNode;
+  feedChecklist?: string[];
+  feedDescriptionContent?: ReactNode;
+  feedStageActionAnchor?: string;
   feedStageActionLabel?: string;
   feedStageLabel?: string;
+  feedStageTimestamp?: string;
+  feedTeamAnimated?: boolean;
+  onFeedStageAction?: () => void;
   hideToolbar?: boolean;
   icon?: IconDefinition;
   initialTab?: string;
@@ -45,12 +51,18 @@ export function DocumentFrame({
   activeTab = "ACTIVITIES",
   calendarContent,
   children,
+  feedChecklist,
+  feedDescriptionContent,
+  feedStageActionAnchor,
   feedStageActionLabel,
   feedStageLabel,
+  feedStageTimestamp,
+  feedTeamAnimated,
   hideToolbar = false,
   icon = faFileLines,
   initialTab,
   jobsContent,
+  onFeedStageAction,
   tabAnchors,
   tabs = defaultTabs,
   title = campaign.campaign,
@@ -111,9 +123,15 @@ export function DocumentFrame({
       )}
       {renderTabContent(selectedTab, activeTab, children, {
         calendarContent,
+        feedChecklist,
+        feedDescriptionContent,
+        feedStageActionAnchor,
         feedStageActionLabel,
         feedStageLabel,
+        feedStageTimestamp,
+        feedTeamAnimated,
         jobsContent,
+        onFeedStageAction,
       })}
     </section>
   );
@@ -125,9 +143,15 @@ function renderTabContent(
   children: ReactNode,
   feedState?: {
     calendarContent?: ReactNode;
+    feedChecklist?: string[];
+    feedDescriptionContent?: ReactNode;
+    feedStageActionAnchor?: string;
     feedStageActionLabel?: string;
     feedStageLabel?: string;
+    feedStageTimestamp?: string;
+    feedTeamAnimated?: boolean;
     jobsContent?: ReactNode;
+    onFeedStageAction?: () => void;
   },
 ) {
   if (selectedTab === "FEED") return <FeedDocumentView {...feedState} />;
@@ -158,11 +182,23 @@ function renderTabContent(
 }
 
 export function FeedDocumentView({
+  feedChecklist,
+  feedDescriptionContent,
+  feedStageActionAnchor = "budget-stage-approval",
   feedStageActionLabel,
   feedStageLabel,
+  feedStageTimestamp = "04 Jun 2026, 13:31",
+  feedTeamAnimated = false,
+  onFeedStageAction,
 }: {
+  feedChecklist?: string[];
+  feedDescriptionContent?: ReactNode;
+  feedStageActionAnchor?: string;
   feedStageActionLabel?: string;
   feedStageLabel?: string;
+  feedStageTimestamp?: string;
+  feedTeamAnimated?: boolean;
+  onFeedStageAction?: () => void;
 }) {
   const [stageLabel, setStageLabel] = useState(feedStageLabel ?? "In progress");
   const [stageActionLabel, setStageActionLabel] = useState(feedStageActionLabel ?? "Send estimate");
@@ -170,7 +206,7 @@ export function FeedDocumentView({
   const responsible = campaign.team.slice(0, 3);
   const executors = campaign.team.slice(1);
   const associated = campaign.team.slice(0, 2);
-  const checklist = [
+  const checklist = feedChecklist ?? [
     "Client Request / Brief",
     "Estimate / Budget",
     "Project Plan",
@@ -212,42 +248,53 @@ export function FeedDocumentView({
             <span><FontAwesomeIcon icon={faFileLines} /></span>
             <strong>Description</strong>
           </header>
+          <div className="feed-version-control" aria-label="Description version">
+            <div>
+              <strong>Rachel</strong>
+              <small>{feedStageTimestamp}</small>
+            </div>
+            <img className="avatar photo" src={requester.avatar} alt="Rachel" />
+          </div>
           <div className="feed-description-box">
             <div className="feed-description-content">
-              <p>Client request: create key assets for a Coca-Cola summer campaign.</p>
-              <p>
-                <strong>Scope:</strong><br />
-                Website Landing Page<br />
-                15s Video<br />
-                3D Digital Banner
-              </p>
-              <p>
-                <strong>Timeline:</strong><br />
-                Concept, Website, Video, 3D Banner, Delivery
-              </p>
-              <p>
-                <strong>Cost:</strong><br />
-                €15,000 approved
-              </p>
-              <div className="feed-documents" data-tour-anchor="project-documents">
-                <article>
-                  <img
-                    src="https://images.unsplash.com/photo-1629203851122-3726ecdf080e?auto=format&fit=crop&w=180&q=80"
-                    alt="Coca-Cola creative preview"
-                  />
-                  <div>
-                    <strong>Summer asset reference</strong>
-                    <small>Image</small>
+              {feedDescriptionContent ?? (
+                <>
+                  <p>Client request: create key assets for a Coca-Cola summer campaign.</p>
+                  <p>
+                    <strong>Scope:</strong><br />
+                    Website Landing Page<br />
+                    15s Video<br />
+                    3D Digital Banner
+                  </p>
+                  <p>
+                    <strong>Timeline:</strong><br />
+                    Concept, Website, Video, 3D Banner, Delivery
+                  </p>
+                  <p>
+                    <strong>Cost:</strong><br />
+                    €15,000 approved
+                  </p>
+                  <div className="feed-documents" data-tour-anchor="project-documents">
+                    <article>
+                      <img
+                        src="https://images.unsplash.com/photo-1629203851122-3726ecdf080e?auto=format&fit=crop&w=180&q=80"
+                        alt="Coca-Cola creative preview"
+                      />
+                      <div>
+                        <strong>Summer asset reference</strong>
+                        <small>Image</small>
+                      </div>
+                    </article>
+                    <article>
+                      <span><FontAwesomeIcon icon={faFileImage} /></span>
+                      <div>
+                        <strong>Creative Brief</strong>
+                        <small>Creative brief</small>
+                      </div>
+                    </article>
                   </div>
-                </article>
-                <article>
-                  <span><FontAwesomeIcon icon={faFileImage} /></span>
-                  <div>
-                    <strong>Creative Brief</strong>
-                    <small>Creative brief</small>
-                  </div>
-                </article>
-              </div>
+                </>
+              )}
             </div>
             <div className="feed-checklist">
               <div className="feed-check-row head">
@@ -300,12 +347,17 @@ export function FeedDocumentView({
         <section className="feed-stage-card">
           <header>
             <img className="avatar photo" src={requester.avatar} alt="" />
-            <small>04 Jun 2026, 13:31</small>
+            <small>{feedStageTimestamp}</small>
           </header>
           <div>
             <strong>Stage</strong>
             <span><i /> {stageLabel}</span>
-            <button className="feed-stage-action" data-tour-anchor="budget-stage-approval" type="button">
+            <button
+              className="feed-stage-action"
+              data-tour-anchor={feedStageActionAnchor}
+              onClick={onFeedStageAction}
+              type="button"
+            >
               {stageActionLabel}
             </button>
           </div>
@@ -324,26 +376,39 @@ export function FeedDocumentView({
             <FontAwesomeIcon icon={faUserGroup} />
             <strong>Team</strong>
           </header>
-          <FeedTeamRow label="Requester" people={[requester]} />
-          <FeedTeamRow label="Responsible" people={responsible} />
-          <FeedTeamRow label="Executor" people={executors} prefix="EC" />
-          <FeedTeamRow label="Associated" people={associated} client />
+          <FeedTeamRow animated={feedTeamAnimated} label="Requester" people={[requester]} />
+          <FeedTeamRow animated={feedTeamAnimated} label="Responsible" people={responsible} />
+          <FeedTeamRow animated={feedTeamAnimated} label="Executor" people={executors} prefix="EC" />
+          <FeedTeamRow animated={feedTeamAnimated} label="Associated" people={associated} client />
         </section>
       </aside>
     </div>
   );
 }
 
-function FeedTeamRow({ client, label, people, prefix }: { client?: boolean; label: string; people: typeof campaign.team; prefix?: string }) {
+function FeedTeamRow({ animated = false, client, label, people, prefix }: { animated?: boolean; client?: boolean; label: string; people: typeof campaign.team; prefix?: string }) {
   return (
-    <div className="feed-team-row">
+    <div className={animated ? "feed-team-row animated" : "feed-team-row"}>
       <small>{label}</small>
       <div>
         {prefix && <em>{prefix}</em>}
-        {people.map((person) => (
-          <img className="avatar photo" src={person.avatar} alt={person.name} key={`${label}-${person.name}`} />
+        {people.map((person, index) => (
+          <img
+            className="avatar photo"
+            src={person.avatar}
+            alt={person.name}
+            key={`${label}-${person.name}`}
+            style={animated ? ({ "--brief-delay": `${index * 90 + 560}ms` } as CSSProperties) : undefined}
+          />
         ))}
-        {client && <span className="brand-avatar mini client-logo-badge"><img src={campaign.clientLogo} alt={campaign.client} /></span>}
+        {client && (
+          <span
+            className="brand-avatar mini client-logo-badge"
+            style={animated ? ({ "--brief-delay": `${people.length * 90 + 620}ms` } as CSSProperties) : undefined}
+          >
+            <img src={campaign.clientLogo} alt={campaign.client} />
+          </span>
+        )}
       </div>
     </div>
   );

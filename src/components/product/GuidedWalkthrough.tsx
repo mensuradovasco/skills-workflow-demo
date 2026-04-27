@@ -199,16 +199,19 @@ export function GuidedWalkthrough({
     goNext();
   }, [currentStep.selector, goNext]);
 
-  const tooltipStyle = useMemo(() => {
+  const tooltipPosition = useMemo(() => {
     if (!targetRect) {
       return {
-        left: "50%",
-        top: "50%",
-        transform: "translate(-50%, -50%)",
-        width: 320,
+        placement: currentStep.placement,
+        style: {
+          left: "50%",
+          top: "50%",
+          transform: "translate(-50%, -50%)",
+          width: 320,
+        },
       };
     }
-    return getTooltipStyle(targetRect, currentStep.placement, tooltipSize);
+    return getTooltipPosition(targetRect, currentStep.placement, tooltipSize);
   }, [currentStep?.placement, targetRect, tooltipSize]);
 
   if (!active || !currentStep) return null;
@@ -234,7 +237,7 @@ export function GuidedWalkthrough({
           type="button"
         />
       )}
-      <section className={`hotspot-zone guided-demo-hotspot ${currentStep.placement}`} ref={tooltipRef} style={tooltipStyle}>
+      <section className={`hotspot-zone guided-demo-hotspot ${tooltipPosition.placement}`} ref={tooltipRef} style={tooltipPosition.style}>
         <span className="guided-demo-step-count">Step {activeIndex + 1} of {steps.length}</span>
         <span className="hotspot-action-label">{currentStep.title}</span>
         <span className="hotspot-tooltip">{isWaiting ? "Finding the right place..." : currentStep.body}</span>
@@ -262,7 +265,7 @@ function readStoredStep(totalSteps: number) {
   return Math.min(Math.max(storedStep, 0), Math.max(totalSteps - 1, 0));
 }
 
-function getTooltipStyle(
+function getTooltipPosition(
   rect: TargetRect,
   placement: GuidedDemoStep["placement"],
   tooltipSize: { height: number; width: number },
@@ -279,44 +282,161 @@ function getTooltipStyle(
   const maxLeft = viewportWidth - width - 18;
   const minTop = 18;
   const maxTop = viewportHeight - height - 18;
+  const shellRect = document.querySelector<HTMLElement>(".product-shell")?.getBoundingClientRect();
+
+  if (shellRect) {
+    const outside = getOutsideTooltipPosition(rect, shellRect, placement, tooltipSize);
+    if (outside) return outside;
+  }
 
   if (placement === "top") {
     const left = clamp(centeredLeft, minLeft, maxLeft);
     return {
-      "--guided-arrow-x": `${clamp(targetCenterX - left, 18, width - 18)}px`,
-      left,
-      top: clamp(rect.top - height - gap, minTop, maxTop),
-      width,
+      placement,
+      style: {
+        "--guided-arrow-x": `${clamp(targetCenterX - left, 18, width - 18)}px`,
+        left,
+        top: clamp(rect.top - height - gap, minTop, maxTop),
+        width,
+      },
     };
   }
 
   if (placement === "bottom") {
     const left = clamp(centeredLeft, minLeft, maxLeft);
     return {
-      "--guided-arrow-x": `${clamp(targetCenterX - left, 18, width - 18)}px`,
-      left,
-      top: clamp(rect.top + rect.height + gap, minTop, maxTop),
-      width,
+      placement,
+      style: {
+        "--guided-arrow-x": `${clamp(targetCenterX - left, 18, width - 18)}px`,
+        left,
+        top: clamp(rect.top + rect.height + gap, minTop, maxTop),
+        width,
+      },
     };
   }
 
   if (placement === "left") {
     const top = clamp(centeredTop, minTop, maxTop);
     return {
-      "--guided-arrow-y": `${clamp(targetCenterY - top, 18, height - 18)}px`,
-      left: clamp(rect.left - width - gap, minLeft, maxLeft),
-      top,
-      width,
+      placement,
+      style: {
+        "--guided-arrow-y": `${clamp(targetCenterY - top, 18, height - 18)}px`,
+        left: clamp(rect.left - width - gap, minLeft, maxLeft),
+        top,
+        width,
+      },
     };
   }
 
   const top = clamp(centeredTop, minTop, maxTop);
   return {
-    "--guided-arrow-y": `${clamp(targetCenterY - top, 18, height - 18)}px`,
-    left: clamp(rect.left + rect.width + gap, minLeft, maxLeft),
-    top,
-    width,
+    placement,
+    style: {
+      "--guided-arrow-y": `${clamp(targetCenterY - top, 18, height - 18)}px`,
+      left: clamp(rect.left + rect.width + gap, minLeft, maxLeft),
+      top,
+      width,
+    },
   };
+}
+
+function getOutsideTooltipPosition(
+  rect: TargetRect,
+  shellRect: DOMRect,
+  preferredPlacement: GuidedDemoStep["placement"],
+  tooltipSize: { height: number; width: number },
+) {
+  const gap = 18;
+  const { height, width } = tooltipSize;
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
+  const targetCenterX = rect.left + rect.width / 2;
+  const targetCenterY = rect.top + rect.height / 2;
+  const minLeft = 18;
+  const maxLeft = viewportWidth - width - 18;
+  const minTop = 18;
+  const maxTop = viewportHeight - height - 18;
+  const distanceToLeft = Math.abs(targetCenterX - shellRect.left);
+  const distanceToRight = Math.abs(shellRect.right - targetCenterX);
+  const distanceToTop = Math.abs(targetCenterY - shellRect.top);
+  const distanceToBottom = Math.abs(shellRect.bottom - targetCenterY);
+  const nearestEdge = [
+    ["left", distanceToLeft],
+    ["right", distanceToRight],
+    ["top", distanceToTop],
+    ["bottom", distanceToBottom],
+  ].sort((a, b) => Number(a[1]) - Number(b[1]))[0][0] as GuidedDemoStep["placement"];
+  const oppositeEdge: Record<GuidedDemoStep["placement"], GuidedDemoStep["placement"]> = {
+    bottom: "top",
+    left: "right",
+    right: "left",
+    top: "bottom",
+  };
+  const placements = Array.from(new Set([
+    nearestEdge,
+    oppositeEdge[nearestEdge],
+    preferredPlacement,
+    "right",
+    "left",
+    "bottom",
+    "top",
+  ])) as GuidedDemoStep["placement"][];
+
+  for (const placement of placements) {
+    if (placement === "left") {
+      const top = clamp(targetCenterY - height / 2, minTop, maxTop);
+      return {
+        placement,
+        style: {
+          "--guided-arrow-y": `${clamp(targetCenterY - top, 18, height - 18)}px`,
+          left: clamp(shellRect.left - width - gap, minLeft, maxLeft),
+          top,
+          width,
+        },
+      };
+    }
+
+    if (placement === "right") {
+      const top = clamp(targetCenterY - height / 2, minTop, maxTop);
+      return {
+        placement,
+        style: {
+          "--guided-arrow-y": `${clamp(targetCenterY - top, 18, height - 18)}px`,
+          left: clamp(shellRect.right + gap, minLeft, maxLeft),
+          top,
+          width,
+        },
+      };
+    }
+
+    if (placement === "top") {
+      const left = clamp(targetCenterX - width / 2, minLeft, maxLeft);
+      return {
+        placement,
+        style: {
+          "--guided-arrow-x": `${clamp(targetCenterX - left, 18, width - 18)}px`,
+          left,
+          top: clamp(shellRect.top - height - gap, minTop, maxTop),
+          width,
+        },
+      };
+    }
+
+    if (placement === "bottom") {
+      const left = clamp(targetCenterX - width / 2, minLeft, maxLeft);
+      return {
+        placement,
+        style: {
+          "--guided-arrow-x": `${clamp(targetCenterX - left, 18, width - 18)}px`,
+          left,
+          top: clamp(shellRect.bottom + gap, minTop, maxTop),
+          width,
+        },
+      };
+    }
+  }
+
+  return null;
 }
 
 function clamp(value: number, min: number, max: number) {

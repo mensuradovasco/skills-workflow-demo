@@ -4,6 +4,7 @@ import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import {
   faBell,
   faBriefcase,
+  faBug,
   faCalculator,
   faChartPie,
   faCheck,
@@ -14,6 +15,7 @@ import {
   faEllipsis,
   faFolderOpen,
   faHouse,
+  faLightbulb,
   faListCheck,
   faMagnifyingGlass,
   faPaperPlane,
@@ -37,6 +39,7 @@ import {
   TasksWorkspace,
 } from "./components/product/AgencyWorkspaces";
 import { BudgetBuilder } from "./components/product/BudgetBuilder";
+import { ClientBrief } from "./components/product/ClientBrief";
 import { ClientList } from "./components/product/ClientList";
 import { ExecutionProofing } from "./components/product/ExecutionProofing";
 import {
@@ -55,6 +58,7 @@ import { stepDelay } from "./motion/transitions";
 
 const stepDurations: Record<DemoStep, number> = {
   request: 5200,
+  brief: 6800,
   budget: 5600,
   approval: 6800,
   project: 4400,
@@ -145,11 +149,11 @@ export function DemoApp() {
     setGuidedDemoActive(true);
     setActiveWorkspace(null);
     setTourView(guidedDemoSteps[1]?.target.view ?? null);
-    setActiveStep(guidedDemoSteps[1]?.target.step ?? "budget");
+    setActiveStep(guidedDemoSteps[1]?.target.step ?? "brief");
   }, [setGuidedDemoActive]);
 
   return (
-    <AppShell activeStep={activeStep} onStepChange={(step) => {
+    <AppShell activeStep={activeStep} guidedActive={isGuidedDemoActive} onStepChange={(step) => {
       setActiveWorkspace(null);
       setTourView(null);
       setActiveStep(step);
@@ -259,8 +263,7 @@ export function DemoApp() {
               onClick={() => setIsAssistantOpen(true)}
               type="button"
             >
-              <FontAwesomeIcon icon={faComments} />
-              <span>AI Assistant</span>
+              <FontAwesomeIcon icon={faWandMagicSparkles} />
             </button>
           )}
           <GuidedWalkthrough
@@ -462,12 +465,30 @@ const assistantMessages: AssistantMessage[] = [
   },
 ];
 
+const assistantQuickActions = [
+  {
+    icon: faBug,
+    label: "Report a problem",
+    prompt: "Report a problem with Coca-Cola - Summer Assets.",
+  },
+  {
+    icon: faLightbulb,
+    label: "Request a feature",
+    prompt: "Request a feature for this workflow.",
+  },
+  {
+    icon: faMagnifyingGlass,
+    label: "Search job",
+    prompt: "Search for the Coca-Cola Summer Assets job.",
+  },
+];
+
 function AssistantPanel({ onClose }: { onClose: () => void }) {
   const [messages, setMessages] = useState(assistantMessages);
   const [draft, setDraft] = useState("");
 
-  const sendMessage = () => {
-    const trimmed = draft.trim();
+  const sendPrompt = (prompt: string) => {
+    const trimmed = prompt.trim();
     if (!trimmed) return;
 
     const nextMessages: AssistantMessage[] = [
@@ -478,6 +499,10 @@ function AssistantPanel({ onClose }: { onClose: () => void }) {
 
     setMessages(nextMessages);
     setDraft("");
+  };
+
+  const sendMessage = () => {
+    sendPrompt(draft);
   };
 
   return (
@@ -497,13 +522,15 @@ function AssistantPanel({ onClose }: { onClose: () => void }) {
           <FontAwesomeIcon icon={faEllipsis} />
         </button>
       </header>
-      <div className="chat-participants">
-        {campaign.team.slice(0, 3).map((member) => (
-          <img className="avatar photo" src={member.avatar} alt="" key={member.name} />
-        ))}
-        <span>AI</span>
-      </div>
       <div className="chat-date">AI help across project, budget, tasks, resources, and delivery</div>
+      <div className="assistant-quick-actions" aria-label="Assistant shortcuts">
+        {assistantQuickActions.map((action) => (
+          <button key={action.label} onClick={() => sendPrompt(action.prompt)} type="button">
+            <span><FontAwesomeIcon icon={action.icon} /></span>
+            <strong>{action.label}</strong>
+          </button>
+        ))}
+      </div>
       <div className="chat-thread">
         {messages.map((message) => (
           <article className={message.mine ? "chat-message mine" : "chat-message"} key={`${message.author}-${message.time}-${message.text}`}>
@@ -538,6 +565,18 @@ function getAssistantReply(message: string) {
 
   if (lower.includes("resource") || lower.includes("conflict")) {
     return "Arthur overlaps with Nike Autumn Refresh after the 3D Banner task, and Rachel has Spotify review time during approvals. I can suggest reassignments or rebalance dates.";
+  }
+
+  if (lower.includes("problem") || lower.includes("bug")) {
+    return "I can capture the issue, attach this project context, and route it to the right operations owner with the current screen and job details.";
+  }
+
+  if (lower.includes("feature")) {
+    return "I can turn that into a feature request with the workflow area, expected outcome, and affected roles so product can review it cleanly.";
+  }
+
+  if (lower.includes("search") || lower.includes("job")) {
+    return "I found Coca-Cola - Summer Assets. It includes the approved budget, project plan, task board, resource allocation, proofing, and profitability view.";
   }
 
   if (lower.includes("campaign") || lower.includes("project")) {
@@ -654,12 +693,20 @@ function StepContent({
           {!guidedMode && (
             <HotspotButton
               icon="magic"
-              label="Create Budget"
-              tooltip="Click the notification to generate the budget from the incoming request."
+              label="Structure Brief"
+              tooltip="Click the notification to turn the incoming request into a structured brief."
               onClick={onStartGuidedDemoFromRequest}
             />
           )}
         </div>
+      </div>
+    );
+  }
+
+  if (step === "brief") {
+    return (
+      <div className="focused-screen brief-structuring-screen">
+        <ClientBrief onGenerateBudget={() => onNavigate("budget")} />
       </div>
     );
   }
@@ -685,36 +732,9 @@ function StepContent({
     return (
       <div className="focused-screen approval-flow-screen clickable-panel">
         <BudgetBuilder
-          feedStageActionLabel="Request changes"
-          feedStageLabel="Approve by Client"
-          initialTab={tourView === "budgetFeed" ? "FEED" : undefined}
+          estimateStatus="approved"
           onProjectNavigate={() => onNavigate("project")}
         />
-        <aside className="approval-status-panel">
-          <span className="approval-check">
-            <FontAwesomeIcon icon={faCheck} />
-          </span>
-          <div>
-            <small>Client approved estimate</small>
-            <h3>Budget approved</h3>
-            <p>Coca-Cola approved the €15,000 estimate. Deliverables are now cleared for project creation.</p>
-          </div>
-          <div className="approval-deliverables">
-            {campaign.request.deliverables.map((item, index) => (
-              <div className="approval-deliverable" key={item} style={stepDelay(index * 140 + 180)}>
-                <span>
-                  <FontAwesomeIcon icon={faCheck} />
-                </span>
-                <strong>{item}</strong>
-                <em>Approved</em>
-              </div>
-            ))}
-          </div>
-          <div className="approval-project-handoff">
-            <strong>Next: create project</strong>
-            <span>Budget, scope, dates and deliverables will move into the project workspace.</span>
-          </div>
-        </aside>
         {!guidedMode && (
           <HotspotButton
             className="top-right-action approval-next-action"
@@ -865,6 +885,7 @@ function HotspotButton({
 function stageTitle(step: DemoStep) {
   const titles: Record<DemoStep, string> = {
     request: "Coca-Cola sends a summer asset request.",
+    brief: "AI structures the request into a working brief.",
     budget: "The €15,000 estimate builds from scope.",
     approval: "Approval turns the budget into action.",
     project: "The project workspace carries the same story.",
@@ -881,8 +902,10 @@ function stageDescription(step: DemoStep) {
   const descriptions: Record<DemoStep, string> = {
     request:
       "Start in the Coca-Cola workspace. The request appears as the first operational signal.",
+    brief:
+      "Before pricing anything, the request becomes a clear brief with scope, deliverables, deadlines, and team ownership.",
     budget:
-      "Concept, website, video, 3D banner, and project management roll into one approved estimate.",
+      "The structured brief now becomes a priced estimate, keeping understanding and costing in the right order.",
     approval:
       "The commercial decision becomes the trigger for delivery, keeping finance and project setup connected.",
     project:

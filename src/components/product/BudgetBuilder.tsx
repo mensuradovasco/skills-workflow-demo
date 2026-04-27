@@ -95,15 +95,17 @@ const totalExternalCostFor = (
     .reduce((sum, row) => sum + row.quantity * row.unit, 0);
 
 type BudgetBuilderProps = {
+  estimateStatus?: "ready" | "sent" | "approved";
   feedStageActionLabel?: string;
   feedStageLabel?: string;
   initialTab?: string;
   onProjectNavigate?: () => void;
 };
 
-export function BudgetBuilder({ feedStageActionLabel, feedStageLabel, initialTab, onProjectNavigate }: BudgetBuilderProps) {
+export function BudgetBuilder({ estimateStatus = "ready", feedStageActionLabel, feedStageLabel, initialTab, onProjectNavigate }: BudgetBuilderProps) {
   const [selectedTab, setSelectedTab] = useState(initialTab ?? "QUOTES");
   const [hoursByOrder, setHoursByOrder] = useState<Record<string, number>>({});
+  const [estimateSent, setEstimateSent] = useState(estimateStatus !== "ready");
   const [openSections, setOpenSections] = useState({
     resources: true,
     services: false,
@@ -125,6 +127,9 @@ export function BudgetBuilder({ feedStageActionLabel, feedStageLabel, initialTab
     const resources = totalResourceCostForQuote(item.name);
     const serviceCosts = totalExternalCostFor(services, item.name);
     const expensesCosts = totalExternalCostFor(expenses, item.name);
+    const hours = resourceGroups
+      .filter((group) => deliverableNameFromGroup(group.deliverable) === item.name)
+      .reduce((sum, group) => sum + group.rows.reduce((groupSum, row) => groupSum + hoursFor(row.order, row.hours), 0), 0);
     const totalCost = resources + serviceCosts + expensesCosts;
     const projectManagementShare = item.id === "1" ? 1300 : item.id === "2" ? 250 : 100;
     const totalIncome = totalCost + projectManagementShare;
@@ -132,6 +137,7 @@ export function BudgetBuilder({ feedStageActionLabel, feedStageLabel, initialTab
     return {
       ...item,
       expensesCosts,
+      hours,
       resources,
       serviceCosts,
       totalCost,
@@ -144,6 +150,7 @@ export function BudgetBuilder({ feedStageActionLabel, feedStageLabel, initialTab
     services: quoteDeliverables.reduce((sum, item) => sum + item.serviceCosts, 0),
     expenses: quoteDeliverables.reduce((sum, item) => sum + item.expensesCosts, 0),
     income: quoteDeliverables.reduce((sum, item) => sum + item.totalIncome, 0),
+    hours: quoteDeliverables.reduce((sum, item) => sum + item.hours, 0),
   };
   const toggleSection = (section: keyof typeof openSections) => {
     setOpenSections((current) => ({ ...current, [section]: !current[section] }));
@@ -157,16 +164,30 @@ export function BudgetBuilder({ feedStageActionLabel, feedStageLabel, initialTab
   }, [initialTab]);
 
   useEffect(() => {
+    setEstimateSent(estimateStatus !== "ready");
+  }, [estimateStatus]);
+
+  useEffect(() => {
     const handleGuidedStepComplete = (event: Event) => {
       const stepId = (event as CustomEvent<{ id?: string }>).detail?.id;
       if (stepId === "estimate-budget") {
         setHoursByOrder((current) => ({ ...current, "1.2": 20 }));
+        setEstimateSent(true);
       }
     };
 
     window.addEventListener("guided-demo-step-complete", handleGuidedStepComplete);
     return () => window.removeEventListener("guided-demo-step-complete", handleGuidedStepComplete);
   }, []);
+
+  const isApproved = estimateStatus === "approved";
+  const stageLabel = isApproved ? "Approved by client" : estimateSent ? "Sent for approval" : "Ready for approval";
+  const stageActionLabel = isApproved ? "Approved" : estimateSent ? "Awaiting approval" : (feedStageActionLabel ?? "Send estimate");
+  const stageClassName = isApproved
+    ? "feed-stage-card budget-stage-card approved"
+    : estimateSent
+      ? "feed-stage-card budget-stage-card sent"
+      : "feed-stage-card budget-stage-card";
 
   return (
     <Card className="budget-card">
@@ -213,7 +234,8 @@ export function BudgetBuilder({ feedStageActionLabel, feedStageLabel, initialTab
       </header>
       <div className="budget-ai-sweep" aria-hidden="true" />
       {selectedTab === "FEED" ? <FeedDocumentView feedStageActionLabel={feedStageActionLabel} feedStageLabel={feedStageLabel} /> : <div className="budget-quote-workspace">
-        <section className="budget-deliverables-panel" data-tour-anchor="estimate-budget">
+        <main className="budget-quote-main">
+          <section className="budget-deliverables-panel" data-tour-anchor="estimate-budget">
           <header>
             <strong>Deliverables</strong>
             <div className="budget-toggle-group">
@@ -227,6 +249,7 @@ export function BudgetBuilder({ feedStageActionLabel, feedStageLabel, initialTab
               <span>Name</span>
               <span>Description</span>
               <span>Service</span>
+              <span>Hours</span>
               <span>Total cost</span>
               <span>Total income</span>
               <span>Approved</span>
@@ -237,6 +260,7 @@ export function BudgetBuilder({ feedStageActionLabel, feedStageLabel, initialTab
                 <strong>{item.name}</strong>
                 <span>{item.description}</span>
                 <span>{item.service}</span>
+                <span>{item.hours}</span>
                 <span>{formatCurrency(item.totalCost)}</span>
                 <span>{formatCurrency(item.totalIncome)}</span>
                 <span><FontAwesomeIcon icon={faCircleCheck} /></span>
@@ -247,14 +271,15 @@ export function BudgetBuilder({ feedStageActionLabel, feedStageLabel, initialTab
               <strong>Total estimate</strong>
               <span />
               <span />
+              <span>{quoteTotals.hours}</span>
               <span>{formatCurrency(quoteTotals.deliverables)}</span>
               <span>{formatCurrency(quoteTotals.income)}</span>
               <span />
             </div>
           </div>
-        </section>
+          </section>
 
-        <section className={openSections.resources ? "budget-quote-section resources open" : "budget-quote-section collapsed"}>
+          <section className={openSections.resources ? "budget-quote-section resources open" : "budget-quote-section collapsed"}>
           <button className="budget-section-header" onClick={() => toggleSection("resources")}>
             <span><FontAwesomeIcon icon={openSections.resources ? faChevronDown : faChevronRight} /></span>
             <strong><FontAwesomeIcon icon={faUserGroup} /> Resources</strong>
@@ -312,9 +337,9 @@ export function BudgetBuilder({ feedStageActionLabel, feedStageLabel, initialTab
               </div>
             ))}
           </div>}
-        </section>
+          </section>
 
-        <section className={openSections.services ? "budget-quote-section open" : "budget-quote-section collapsed"}>
+          <section className={openSections.services ? "budget-quote-section open" : "budget-quote-section collapsed"}>
           <button className="budget-section-header" onClick={() => toggleSection("services")}>
             <span><FontAwesomeIcon icon={openSections.services ? faChevronDown : faChevronRight} /></span>
             <strong><FontAwesomeIcon icon={faScrewdriverWrench} /> Services</strong>
@@ -327,9 +352,9 @@ export function BudgetBuilder({ feedStageActionLabel, feedStageLabel, initialTab
               toggleDeliverable={toggleDeliverable}
             />
           )}
-        </section>
+          </section>
 
-        <section className={openSections.expenses ? "budget-quote-section open" : "budget-quote-section collapsed"}>
+          <section className={openSections.expenses ? "budget-quote-section open" : "budget-quote-section collapsed"}>
           <button className="budget-section-header" onClick={() => toggleSection("expenses")}>
             <span><FontAwesomeIcon icon={openSections.expenses ? faChevronDown : faChevronRight} /></span>
             <strong><FontAwesomeIcon icon={faReceipt} /> Expenses</strong>
@@ -342,7 +367,50 @@ export function BudgetBuilder({ feedStageActionLabel, feedStageLabel, initialTab
               toggleDeliverable={toggleDeliverable}
             />
           )}
-        </section>
+          </section>
+        </main>
+
+        <aside className="budget-side-panel">
+          <section className={stageClassName}>
+            <header>
+              <small>04 Jun 2026, 13:31</small>
+            </header>
+            <div>
+              <strong>Stage</strong>
+              <span><i /> {stageLabel}</span>
+              <button
+                className="feed-stage-action"
+                data-tour-anchor="budget-estimate-stage"
+                onClick={() => setEstimateSent(true)}
+                type="button"
+              >
+                {stageActionLabel}
+              </button>
+            </div>
+          </section>
+
+          <section className={estimateSent ? "budget-estimate-summary approved" : "budget-estimate-summary"}>
+            <small>Estimate total</small>
+            <strong>{formatCurrency(quoteTotals.income)}</strong>
+            <p>Website, 15s video, 3D banner, concept, and project management.</p>
+            {estimateSent && <em>{isApproved ? "Total budget approved" : "Total budget sent for approval"}</em>}
+            <span>Approved margin 36%</span>
+            <span>{quoteTotals.hours} planned hours</span>
+            <span>{services.length + expenses.length + 1} linked services</span>
+          </section>
+
+          <section className="budget-side-card team">
+            <header>
+              <strong>Team</strong>
+              <em>Assigned</em>
+            </header>
+            <div>
+              {campaign.team.slice(0, 4).map((member) => (
+                <img className="avatar photo" src={member.avatar} alt={member.name} key={member.name} />
+              ))}
+            </div>
+          </section>
+        </aside>
       </div>}
     </Card>
   );
