@@ -6614,6 +6614,17 @@ button {
   }
 }
 
+@keyframes resourceResultSwap {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @keyframes bellNotificationIn {
   from {
     opacity: 0;

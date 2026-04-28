@@ -361,7 +361,7 @@ export function ResourcePlanner() {
             {(resourceSearchPhase === "dropdown" || resourceSearchPhase === "typing") && (
               <span className="allocation-skill-dropdown">
                 <button type="button"><em>Department</em> Creative</button>
-                <button className={resourceSearchPhase === "selected" || resourceSearchPhase === "dragging" || resourceSearchPhase === "assigned" ? "selected" : ""} type="button">
+                <button className={resourceSearchText === "photo" ? "selected" : ""} type="button">
                   <em>Skill</em> Photoshop
                 </button>
                 <button type="button"><em>Skill</em> Photo retouching</button>
