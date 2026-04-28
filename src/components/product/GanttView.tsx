@@ -1,4 +1,4 @@
-import { type MouseEvent, useEffect, useState } from "react";
+import { type CSSProperties, type MouseEvent, useEffect, useState } from "react";
 import { campaign, projectTimelineRows } from "../../data/cocaColaCampaign";
 
 type GanttRow = {
@@ -7,6 +7,7 @@ type GanttRow = {
   end: string;
   left: number;
   name: string;
+  owner: string;
   progress: string;
   stage: string;
   start: string;
@@ -16,6 +17,7 @@ type GanttRow = {
 };
 
 const initialRows: GanttRow[] = [...projectTimelineRows];
+const teamByName = new Map(campaign.team.map((member) => [member.name, member]));
 
 export function GanttView() {
   const [items, setItems] = useState(initialRows);
@@ -126,8 +128,10 @@ export function GanttView() {
             const depth = (row.wbs.match(/\./g) ?? []).length;
             const isCollapsed = collapsed.has(row.wbs);
             const rowClass = `gantt-row${isParent ? " is-parent" : ""}${depth > 0 ? " is-child" : ""}`;
+            const assignees = assigneesForRow(row);
+            const delay = `${index * 70 + 160}ms`;
             return (
-            <div className={rowClass} key={`${row.wbs}-${row.name}`}>
+            <div className={rowClass} key={`${row.wbs}-${row.name}`} style={{ "--gantt-delay": delay } as CSSProperties}>
               <span>{index + 1}</span>
               <span>{row.wbs}</span>
               <strong style={depth > 0 ? { paddingLeft: `${8 + depth * 14}px` } : undefined}>
@@ -145,11 +149,16 @@ export function GanttView() {
               </strong>
               <span>{row.start}</span>
               <span>{row.end}</span>
-              <span>{row.duration}</span>
+              <span className="gantt-duration">{row.duration}</span>
               <span><i className={`type-dot ${row.color}`} />{row.type}</span>
               <span className="gantt-avatars">
-                {campaign.team.slice(0, index % 3 + 1).map((member) => (
-                  <img src={member.avatar} alt="" key={`${row.name}-${member.name}`} />
+                {assignees.map((member, avatarIndex) => (
+                  <img
+                    src={member.avatar}
+                    alt={member.name}
+                    key={`${row.name}-${member.name}`}
+                    style={{ "--gantt-avatar-delay": `${index * 70 + avatarIndex * 90 + 260}ms` } as CSSProperties}
+                  />
                 ))}
               </span>
               <span><i className={`stage-dot ${row.color}`} />{row.stage}</span>
@@ -164,14 +173,23 @@ export function GanttView() {
             <span>2026 June</span>
             <span>2026 July</span>
           </div>
-          {visibleItems.map((row, index) => (
-            <div className="gantt-track" key={`${row.wbs}-${row.name}-bar`}>
+          {visibleItems.map((row, index) => {
+            const progress = parseProgress(row.progress);
+            return (
+            <div className="gantt-track" key={`${row.wbs}-${row.name}-bar`} style={{ "--gantt-delay": `${index * 70 + 160}ms` } as CSSProperties}>
               <span
                 className={`gantt-bar ${row.color} ${interaction?.index === index ? "editing" : ""}`}
                 data-tour-anchor={row.wbs === "2" ? "project-gantt-timeline" : undefined}
                 onMouseDown={(event) => startInteraction(event, index, "move")}
-                style={{ left: `${row.left}%`, width: `${row.width}%` }}
+                style={{
+                  "--gantt-left": `${row.left}%`,
+                  "--gantt-progress": `${progress}%`,
+                  "--gantt-width": `${row.width}%`,
+                  left: `${row.left}%`,
+                  width: `${row.width}%`,
+                } as CSSProperties}
               >
+                <span className="gantt-bar-progress" />
                 <span
                   className="gantt-resize-handle start"
                   onMouseDown={(event) => startInteraction(event, index, "start")}
@@ -183,11 +201,31 @@ export function GanttView() {
                 />
               </span>
             </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>
   );
+}
+
+function assigneesForRow(row: GanttRow) {
+  if (row.type !== "Phase") return [teamByName.get(row.owner)].filter(Boolean) as typeof campaign.team;
+
+  const childPrefix = `${row.wbs}.`;
+  const owners = new Set(
+    initialRows
+      .filter((item) => item.wbs.startsWith(childPrefix))
+      .map((item) => item.owner),
+  );
+  if (!owners.size) owners.add(row.owner);
+  return Array.from(owners).map((name) => teamByName.get(name)).filter(Boolean) as typeof campaign.team;
+}
+
+function parseProgress(progress: string) {
+  const value = Number(progress.replace("%", ""));
+  if (!Number.isFinite(value)) return 0;
+  return clamp(value, 0, 100);
 }
 
 function clamp(value: number, min: number, max: number) {

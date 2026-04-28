@@ -4,10 +4,11 @@ export type GuidedDemoPlacement = "top" | "right" | "bottom" | "left";
 
 export type GuidedDemoTarget = {
   step: DemoStep;
-  view?: "default" | "budgetFeed" | "documents" | "gantt" | "kanban" | "calendar" | "jobs";
+  view?: "default" | "approvedBudget" | "budgetFeed" | "documents" | "gantt" | "kanban" | "calendar" | "jobs";
 };
 
 export type GuidedDemoStep = {
+  advanceDelayMs?: number;
   id: string;
   target: GuidedDemoTarget;
   selector: string;
@@ -44,10 +45,10 @@ export const guidedDemoSteps: GuidedDemoStep[] = [
   },
   {
     id: "approval-project",
-    target: { step: "approval" },
-    selector: '[data-tour-anchor="approval-project"]',
-    title: "Project",
-    body: "The total budget is approved. Create the project from the approved estimate.",
+    target: { step: "budget", view: "approvedBudget" },
+    selector: '[data-tour-anchor="budget-estimate-stage"]',
+    title: "Generate Project",
+    body: "The client approved the estimate. Generate the project from the approved budget.",
     placement: "left",
   },
   {
@@ -83,27 +84,29 @@ export const guidedDemoSteps: GuidedDemoStep[] = [
     placement: "right",
   },
   {
+    advanceDelayMs: 2900,
     id: "resource-planning-view",
     target: { step: "resources" },
     selector: '[data-tour-anchor="resource-search"]',
     title: "Resources",
-    body: "Search the resource board to review this project in the context of other team bookings and spot conflicts.",
+    body: "Search Photoshop, select the skill, filter the team, and let the job move to the most available person.",
     placement: "left",
   },
   {
-    id: "execution-review",
-    target: { step: "execution" },
-    selector: '[data-tour-anchor="execution-review"]',
-    title: "Review",
-    body: "Open the approval and proofing step.",
+    id: "resource-open-job",
+    target: { step: "resources" },
+    selector: '[data-tour-anchor="resource-create-3d-asset"]',
+    title: "Open Job",
+    body: "Open the Create 3D asset job from the resource plan without leaving the allocation workspace.",
     placement: "left",
   },
   {
-    id: "proofing-track",
-    target: { step: "proofing" },
-    selector: '[data-tour-anchor="proofing-track"]',
-    title: "Track",
-    body: "Move to profitability and plan-vs-actual tracking.",
+    id: "resource-proofing-track",
+    target: { step: "resources" },
+    selector: '[data-tour-anchor="proof-send-approval"]',
+    waitFor: '[data-tour-anchor="proof-send-approval"]',
+    title: "Send to client approval",
+    body: "Send the 3D asset proof to the client and watch it land approved.",
     placement: "left",
   },
 ];

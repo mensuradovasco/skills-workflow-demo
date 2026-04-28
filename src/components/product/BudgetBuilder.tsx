@@ -8,7 +8,7 @@ import {
   faScrewdriverWrench,
   faUserGroup,
 } from "@fortawesome/free-solid-svg-icons";
-import { useEffect, useState } from "react";
+import { type CSSProperties, useEffect, useRef, useState } from "react";
 import { Card } from "../ui/Card";
 import { campaign } from "../../data/cocaColaCampaign";
 import { FeedDocumentView } from "./DocumentFrame";
@@ -105,7 +105,8 @@ type BudgetBuilderProps = {
 export function BudgetBuilder({ estimateStatus = "ready", feedStageActionLabel, feedStageLabel, initialTab, onProjectNavigate }: BudgetBuilderProps) {
   const [selectedTab, setSelectedTab] = useState(initialTab ?? "QUOTES");
   const [hoursByOrder, setHoursByOrder] = useState<Record<string, number>>({});
-  const [estimateSent, setEstimateSent] = useState(estimateStatus !== "ready");
+  const [estimateFlowStatus, setEstimateFlowStatus] = useState<"ready" | "sent" | "approved">(estimateStatus);
+  const approvalTimerRef = useRef<number | null>(null);
   const [openSections, setOpenSections] = useState({
     resources: true,
     services: false,
@@ -164,25 +165,50 @@ export function BudgetBuilder({ estimateStatus = "ready", feedStageActionLabel, 
   }, [initialTab]);
 
   useEffect(() => {
-    setEstimateSent(estimateStatus !== "ready");
+    setEstimateFlowStatus(estimateStatus);
   }, [estimateStatus]);
+
+  const sendEstimateForApproval = () => {
+    if (estimateFlowStatus === "approved") return;
+    if (approvalTimerRef.current) window.clearTimeout(approvalTimerRef.current);
+    setEstimateFlowStatus("sent");
+    approvalTimerRef.current = window.setTimeout(() => {
+      setEstimateFlowStatus("approved");
+      approvalTimerRef.current = null;
+    }, 1100);
+  };
 
   useEffect(() => {
     const handleGuidedStepComplete = (event: Event) => {
       const stepId = (event as CustomEvent<{ id?: string }>).detail?.id;
       if (stepId === "estimate-budget") {
         setHoursByOrder((current) => ({ ...current, "1.2": 20 }));
-        setEstimateSent(true);
+        sendEstimateForApproval();
+      }
+    };
+    const handleGuidedStepActive = (event: Event) => {
+      const stepId = (event as CustomEvent<{ id?: string }>).detail?.id;
+      if (stepId === "estimate-budget") {
+        if (approvalTimerRef.current) window.clearTimeout(approvalTimerRef.current);
+        approvalTimerRef.current = null;
+        setEstimateFlowStatus("ready");
       }
     };
 
     window.addEventListener("guided-demo-step-complete", handleGuidedStepComplete);
-    return () => window.removeEventListener("guided-demo-step-complete", handleGuidedStepComplete);
+    window.addEventListener("guided-demo-step-active", handleGuidedStepActive);
+    return () => {
+      window.removeEventListener("guided-demo-step-complete", handleGuidedStepComplete);
+      window.removeEventListener("guided-demo-step-active", handleGuidedStepActive);
+      if (approvalTimerRef.current) window.clearTimeout(approvalTimerRef.current);
+    };
   }, []);
 
-  const isApproved = estimateStatus === "approved";
-  const stageLabel = isApproved ? "Approved by client" : estimateSent ? "Sent for approval" : "Ready for approval";
-  const stageActionLabel = isApproved ? "Approved" : estimateSent ? "Awaiting approval" : (feedStageActionLabel ?? "Send estimate");
+  const isApproved = estimateFlowStatus === "approved";
+  const estimateSent = estimateFlowStatus !== "ready";
+  const approvalClassName = isApproved ? "approved" : "pending";
+  const stageLabel = isApproved ? "Client approved" : estimateSent ? "Sent for approval" : "Ready for approval";
+  const stageActionLabel = isApproved ? "Generate project" : estimateSent ? "Awaiting approval" : (feedStageActionLabel ?? "Send estimate");
   const stageClassName = isApproved
     ? "feed-stage-card budget-stage-card approved"
     : estimateSent
@@ -207,7 +233,6 @@ export function BudgetBuilder({ estimateStatus = "ready", feedStageActionLabel, 
                 <span>/</span>
                 <button
                   className={onProjectNavigate ? "budget-hierarchy-link" : "budget-hierarchy-link is-static"}
-                  data-tour-anchor={onProjectNavigate ? "approval-project" : undefined}
                   onClick={onProjectNavigate}
                   type="button"
                 >
@@ -254,8 +279,12 @@ export function BudgetBuilder({ estimateStatus = "ready", feedStageActionLabel, 
               <span>Total income</span>
               <span>Approved</span>
             </div>
-            {quoteDeliverables.map((item) => (
-              <div className="budget-deliverable-row" key={item.id}>
+            {quoteDeliverables.map((item, index) => (
+              <div
+                className={isApproved ? "budget-deliverable-row approved" : "budget-deliverable-row pending"}
+                key={item.id}
+                style={{ "--approval-delay": `${index * 100 + 120}ms` } as CSSProperties}
+              >
                 <span>{item.id}</span>
                 <strong>{item.name}</strong>
                 <span>{item.description}</span>
@@ -314,8 +343,9 @@ export function BudgetBuilder({ estimateStatus = "ready", feedStageActionLabel, 
                   const hours = hoursFor(row.order, row.hours);
                   return (
                   <div
-                    className={hoursByOrder[row.order] === undefined ? "budget-resource-row" : "budget-resource-row adjusted"}
+                    className={`${hoursByOrder[row.order] === undefined ? "budget-resource-row" : "budget-resource-row adjusted"} ${approvalClassName}`}
                     key={`${group.deliverable}-${row.order}`}
+                    style={{ "--approval-delay": `${resourceApprovalDelay(row.order)}ms` } as CSSProperties}
                   >
                     <span>{row.order}</span>
                     <strong>{row.role}</strong>
@@ -347,6 +377,7 @@ export function BudgetBuilder({ estimateStatus = "ready", feedStageActionLabel, 
           </button>
           {openSections.services && (
             <BudgetCostTable
+              approved={isApproved}
               openDeliverables={openDeliverables}
               rows={services}
               toggleDeliverable={toggleDeliverable}
@@ -362,6 +393,7 @@ export function BudgetBuilder({ estimateStatus = "ready", feedStageActionLabel, 
           </button>
           {openSections.expenses && (
             <BudgetCostTable
+              approved={isApproved}
               openDeliverables={openDeliverables}
               rows={expenses}
               toggleDeliverable={toggleDeliverable}
@@ -381,7 +413,7 @@ export function BudgetBuilder({ estimateStatus = "ready", feedStageActionLabel, 
               <button
                 className="feed-stage-action"
                 data-tour-anchor="budget-estimate-stage"
-                onClick={() => setEstimateSent(true)}
+                onClick={isApproved ? onProjectNavigate : sendEstimateForApproval}
                 type="button"
               >
                 {stageActionLabel}
@@ -394,9 +426,9 @@ export function BudgetBuilder({ estimateStatus = "ready", feedStageActionLabel, 
             <strong>{formatCurrency(quoteTotals.income)}</strong>
             <p>Website, 15s video, 3D banner, concept, and project management.</p>
             {estimateSent && <em>{isApproved ? "Total budget approved" : "Total budget sent for approval"}</em>}
-            <span>Approved margin 36%</span>
+            <span>{deliverables.length} deliverables</span>
             <span>{quoteTotals.hours} planned hours</span>
-            <span>{services.length + expenses.length + 1} linked services</span>
+            <span>Total margin 36%</span>
           </section>
 
           <section className="budget-side-card team">
@@ -417,10 +449,12 @@ export function BudgetBuilder({ estimateStatus = "ready", feedStageActionLabel, 
 }
 
 function BudgetCostTable({
+  approved,
   openDeliverables,
   rows,
   toggleDeliverable,
 }: {
+  approved: boolean;
   openDeliverables: Record<string, boolean>;
   rows: BudgetCostRow[];
   toggleDeliverable: (deliverable: string) => void;
@@ -449,7 +483,11 @@ function BudgetCostTable({
               <em>{formatCurrency(deliverableTotal)}</em>
             </button>
             {(openDeliverables[deliverable.name] ?? false) && deliverableRows.map((row) => (
-              <div className="budget-cost-row" key={`${row.order}-${row.item}`}>
+              <div
+                className={approved ? "budget-cost-row approved" : "budget-cost-row pending"}
+                key={`${row.order}-${row.item}`}
+                style={{ "--approval-delay": `${resourceApprovalDelay(row.order)}ms` } as CSSProperties}
+              >
                 <span>{row.order}</span>
                 <strong>{row.deliverable}</strong>
                 <span>{row.item}</span>
@@ -465,4 +503,10 @@ function BudgetCostTable({
       })}
         </div>
   );
+}
+
+function resourceApprovalDelay(order: string) {
+  const digits = Number(order.replace(/\D/g, ""));
+  if (!Number.isFinite(digits)) return 120;
+  return digits * 100 + 120;
 }

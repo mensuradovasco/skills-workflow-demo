@@ -53,6 +53,7 @@ export function GuidedWalkthrough({
   useEffect(() => {
     if (!active || !currentStep) return;
     onNavigate(currentStep.target);
+    window.dispatchEvent(new CustomEvent("guided-demo-step-active", { detail: { id: currentStep.id } }));
   }, [active, activeIndex, currentStep, onNavigate]);
 
   useLayoutEffect(() => {
@@ -192,12 +193,21 @@ export function GuidedWalkthrough({
       window.setTimeout(() => {
         delete document.body.dataset.guidedClickProxy;
         goNext();
-      }, 40);
+      }, currentStep.advanceDelayMs ?? 40);
       return;
     }
 
     goNext();
-  }, [currentStep.selector, goNext]);
+  }, [currentStep.advanceDelayMs, currentStep.selector, goNext]);
+
+  const handlePrimaryAction = useCallback(() => {
+    if (activeIndex >= steps.length - 1) {
+      goNext();
+      return;
+    }
+
+    activateTarget();
+  }, [activateTarget, activeIndex, goNext, steps.length]);
 
   const tooltipPosition = useMemo(() => {
     if (!targetRect) {
@@ -243,7 +253,7 @@ export function GuidedWalkthrough({
         <span className="hotspot-tooltip">{isWaiting ? "Finding the right place..." : currentStep.body}</span>
         <span className="guided-demo-controls">
           <button disabled={activeIndex === 0} onClick={goBack} type="button">Previous</button>
-          <button onClick={goNext} type="button">{activeIndex === steps.length - 1 ? "Finish" : "Next"}</button>
+          <button onClick={handlePrimaryAction} type="button">{activeIndex === steps.length - 1 ? "Finish" : "Next"}</button>
         </span>
       </section>
     </div>

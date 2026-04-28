@@ -266,15 +266,15 @@ export function DemoApp() {
               <FontAwesomeIcon icon={faWandMagicSparkles} />
             </button>
           )}
-          <GuidedWalkthrough
-            active={isGuidedDemoActive}
-            onActiveChange={setGuidedDemoActive}
-            onNavigate={navigateForGuidedDemo}
-            onRestartReady={(restart) => setRestartGuidedDemo(() => restart)}
-            steps={guidedDemoSteps}
-          />
         </div>
       </section>
+      <GuidedWalkthrough
+        active={isGuidedDemoActive}
+        onActiveChange={setGuidedDemoActive}
+        onNavigate={navigateForGuidedDemo}
+        onRestartReady={(restart) => setRestartGuidedDemo(() => restart)}
+        steps={guidedDemoSteps}
+      />
     </AppShell>
   );
 }
@@ -714,16 +714,11 @@ function StepContent({
   if (step === "budget") {
     return (
       <div className="focused-screen budget-opening-screen">
-        <BudgetBuilder initialTab={tourView === "budgetFeed" ? "FEED" : undefined} />
-        {!guidedMode && (
-          <HotspotButton
-            className="top-right-action budget-send-action"
-            icon="send"
-            label="Send"
-            tooltip="Send the estimate for client approval."
-            onClick={() => onNavigate("approval")}
-          />
-        )}
+        <BudgetBuilder
+          estimateStatus={tourView === "approvedBudget" ? "approved" : "ready"}
+          initialTab={tourView === "budgetFeed" ? "FEED" : undefined}
+          onProjectNavigate={() => onNavigate("project")}
+        />
       </div>
     );
   }
