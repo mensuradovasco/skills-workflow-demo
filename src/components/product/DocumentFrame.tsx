@@ -29,10 +29,13 @@ type DocumentFrameProps = {
   children: ReactNode;
   feedChecklist?: string[];
   feedDescriptionContent?: ReactNode;
+  feedHideChecklist?: boolean;
+  feedHideHistorySearch?: boolean;
   feedStageActionAnchor?: string;
   feedStageActionLabel?: string;
   feedStageLabel?: string;
   feedStageTimestamp?: string;
+  feedReviewAnimation?: boolean;
   feedTeamAnimated?: boolean;
   onFeedStageAction?: () => void;
   hideToolbar?: boolean;
@@ -53,10 +56,13 @@ export function DocumentFrame({
   children,
   feedChecklist,
   feedDescriptionContent,
+  feedHideChecklist,
+  feedHideHistorySearch,
   feedStageActionAnchor,
   feedStageActionLabel,
   feedStageLabel,
   feedStageTimestamp,
+  feedReviewAnimation,
   feedTeamAnimated,
   hideToolbar = false,
   icon = faFileLines,
@@ -126,10 +132,13 @@ export function DocumentFrame({
           calendarContent,
           feedChecklist,
           feedDescriptionContent,
+          feedHideChecklist,
+          feedHideHistorySearch,
           feedStageActionAnchor,
           feedStageActionLabel,
           feedStageLabel,
           feedStageTimestamp,
+          feedReviewAnimation,
           feedTeamAnimated,
           jobsContent,
           onFeedStageAction,
@@ -147,10 +156,13 @@ function renderTabContent(
     calendarContent?: ReactNode;
     feedChecklist?: string[];
     feedDescriptionContent?: ReactNode;
+    feedHideChecklist?: boolean;
+    feedHideHistorySearch?: boolean;
     feedStageActionAnchor?: string;
     feedStageActionLabel?: string;
     feedStageLabel?: string;
     feedStageTimestamp?: string;
+    feedReviewAnimation?: boolean;
     feedTeamAnimated?: boolean;
     jobsContent?: ReactNode;
     onFeedStageAction?: () => void;
@@ -186,24 +198,31 @@ function renderTabContent(
 export function FeedDocumentView({
   feedChecklist,
   feedDescriptionContent,
+  feedHideChecklist = false,
+  feedHideHistorySearch = false,
   feedStageActionAnchor = "budget-stage-approval",
   feedStageActionLabel,
   feedStageLabel,
   feedStageTimestamp = "04 Jun 2026, 13:31",
+  feedReviewAnimation = false,
   feedTeamAnimated = false,
   onFeedStageAction,
 }: {
   feedChecklist?: string[];
   feedDescriptionContent?: ReactNode;
+  feedHideChecklist?: boolean;
+  feedHideHistorySearch?: boolean;
   feedStageActionAnchor?: string;
   feedStageActionLabel?: string;
   feedStageLabel?: string;
   feedStageTimestamp?: string;
+  feedReviewAnimation?: boolean;
   feedTeamAnimated?: boolean;
   onFeedStageAction?: () => void;
 }) {
   const [stageLabel, setStageLabel] = useState(feedStageLabel ?? "In progress");
   const [stageActionLabel, setStageActionLabel] = useState(feedStageActionLabel ?? "Send estimate");
+  const [reviewStarted, setReviewStarted] = useState(feedReviewAnimation);
   const requester = campaign.team[0];
   const responsible = campaign.team.slice(0, 3);
   const executors = campaign.team.slice(1);
@@ -216,14 +235,15 @@ export function FeedDocumentView({
     "Delivery List",
   ];
   const history = [
-    { name: "Rachel", time: "15:01", action: "moved estimate to", stage: "Approved" },
-    { name: "Arthur", time: "14:45", action: "started", stage: "Landing Page" },
+    { name: "Rachel", time: "15:01", date: "24 March", action: "moved estimate to", stage: "Approved" },
+    { name: "Arthur", time: "14:45", date: "24 March", action: "started", stage: "Landing Page" },
   ];
 
   useEffect(() => {
     setStageLabel(feedStageLabel ?? "In progress");
     setStageActionLabel(feedStageActionLabel ?? "Send estimate");
-  }, [feedStageActionLabel, feedStageLabel]);
+    setReviewStarted(feedReviewAnimation);
+  }, [feedReviewAnimation, feedStageActionLabel, feedStageLabel]);
 
   useEffect(() => {
     const handleGuidedStepComplete = (event: Event) => {
@@ -279,7 +299,7 @@ export function FeedDocumentView({
                   <div className="feed-documents" data-tour-anchor="project-documents">
                     <article>
                       <img
-                        src="https://images.unsplash.com/photo-1629203851122-3726ecdf080e?auto=format&fit=crop&w=180&q=80"
+                        src="https://images.unsplash.com/photo-1554866585-cd94860890b7?auto=format&fit=crop&w=360&q=80"
                         alt="Coca-Cola creative preview"
                       />
                       <div>
@@ -298,30 +318,49 @@ export function FeedDocumentView({
                 </>
               )}
             </div>
-            <div className="feed-checklist">
-              <div className="feed-check-row head">
-                <span>Description</span>
-                <span>Date</span>
-                <span>Done</span>
-              </div>
-              {checklist.map((item, index) => (
-                <div className={index === 1 ? "feed-check-row selected" : "feed-check-row"} key={item}>
-                  <span>{item}</span>
-                  <span>04 Jun 2026</span>
-                  <span>
-                    <FontAwesomeIcon icon={faCheck} />
-                    {index < 3 && <img className="avatar photo" src={campaign.team[index % campaign.team.length].avatar} alt="" />}
-                  </span>
+            {!feedHideChecklist && (
+              <div className="feed-checklist">
+                <div className="feed-check-row head">
+                  <span>Description</span>
+                  <span>Date</span>
+                  <span>Done</span>
                 </div>
-              ))}
-            </div>
+                {checklist.map((item, index) => (
+                  <div className={index === 1 ? "feed-check-row selected" : "feed-check-row"} key={item}>
+                    <span>{item}</span>
+                    <span>04 Jun 2026</span>
+                    <span>
+                      <FontAwesomeIcon icon={faCheck} />
+                      {index < 3 && <img className="avatar photo" src={campaign.team[index % campaign.team.length].avatar} alt="" />}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </section>
 
         <section className="feed-composer">
-          <div>
+          <div
+            className={feedReviewAnimation ? `brief-review-composer${reviewStarted ? " is-reviewing" : ""}` : undefined}
+          >
             <img className="avatar photo" src={requester.avatar} alt="" />
-            <span>Click to start typing. Say something, assign people or drag a file.</span>
+            {feedReviewAnimation && reviewStarted ? (
+              <>
+                <span className="brief-review-initial-placeholder">Click to start typing. Say something, assign people or drag a file.</span>
+                <span className="brief-review-type">
+                  Brief reviewed, ready for estimation.
+                  <em>30 min added to timesheets</em>
+                </span>
+                <span className="brief-review-flyout">
+                  Brief reviewed, ready for estimation.
+                  <em>30 min added to timesheets</em>
+                </span>
+                <span className="brief-review-placeholder">Click to start typing. Say something, assign people or drag a file.</span>
+              </>
+            ) : (
+              <span>Click to start typing. Say something, assign people or drag a file.</span>
+            )}
             <nav>
               <button aria-label="More actions"><FontAwesomeIcon icon={faEllipsisVertical} /></button>
               <button aria-label="Attach file"><FontAwesomeIcon icon={faPaperclip} /></button>
@@ -332,14 +371,26 @@ export function FeedDocumentView({
         </section>
 
         <section className="feed-history">
-          <header>
-            <span>24 March</span>
-            <label><FontAwesomeIcon icon={faMagnifyingGlass} /><input placeholder="Search..." /></label>
-          </header>
+          {!feedHideHistorySearch && (
+            <header>
+              <span />
+              <label><FontAwesomeIcon icon={faMagnifyingGlass} /><input placeholder="Search..." /></label>
+            </header>
+          )}
+          {feedReviewAnimation && reviewStarted && (
+            <article className="brief-review-feed-post">
+              <img className="avatar photo" src={requester.avatar} alt="" />
+              <p>
+                <strong>Rachel</strong> <small>09:52, 24 March</small><br />
+                Brief reviewed, ready for estimation.<br />
+                <em>30 min added to timesheets</em>
+              </p>
+            </article>
+          )}
           {history.map((item) => (
             <article key={`${item.name}-${item.time}`}>
               <img className="avatar photo" src={campaign.team[1].avatar} alt="" />
-              <p><strong>{item.name}</strong> <small>{item.time}</small><br />{item.action} <mark>{item.stage}</mark></p>
+              <p><strong>{item.name}</strong> <small>{item.time}, {item.date}</small><br />{item.action} <mark>{item.stage}</mark></p>
             </article>
           ))}
         </section>
@@ -400,13 +451,13 @@ function FeedTeamRow({ animated = false, client, label, people, prefix }: { anim
             src={person.avatar}
             alt={person.name}
             key={`${label}-${person.name}`}
-            style={animated ? ({ "--brief-delay": `${index * 90 + 560}ms` } as CSSProperties) : undefined}
+            style={animated ? ({ "--brief-delay": `${index * 80 + 240}ms` } as CSSProperties) : undefined}
           />
         ))}
         {client && (
           <span
             className="brand-avatar mini client-logo-badge"
-            style={animated ? ({ "--brief-delay": `${people.length * 90 + 620}ms` } as CSSProperties) : undefined}
+            style={animated ? ({ "--brief-delay": `${people.length * 80 + 320}ms` } as CSSProperties) : undefined}
           >
             <img src={campaign.clientLogo} alt={campaign.client} />
           </span>

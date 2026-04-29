@@ -4,6 +4,7 @@ import {
   faChevronDown,
   faChevronRight,
   faCircleCheck,
+  faFilePdf,
   faReceipt,
   faScrewdriverWrench,
   faUserGroup,
@@ -175,30 +176,22 @@ export function BudgetBuilder({ estimateStatus = "ready", feedStageActionLabel, 
     approvalTimerRef.current = window.setTimeout(() => {
       setEstimateFlowStatus("approved");
       approvalTimerRef.current = null;
-    }, 1100);
+    }, 2000);
   };
 
   useEffect(() => {
-    const handleGuidedStepComplete = (event: Event) => {
-      const stepId = (event as CustomEvent<{ id?: string }>).detail?.id;
-      if (stepId === "estimate-budget") {
-        setHoursByOrder((current) => ({ ...current, "1.2": 20 }));
-        sendEstimateForApproval();
-      }
-    };
     const handleGuidedStepActive = (event: Event) => {
       const stepId = (event as CustomEvent<{ id?: string }>).detail?.id;
       if (stepId === "estimate-budget") {
         if (approvalTimerRef.current) window.clearTimeout(approvalTimerRef.current);
         approvalTimerRef.current = null;
         setEstimateFlowStatus("ready");
+        setHoursByOrder((current) => ({ ...current, "1.2": 20 }));
       }
     };
 
-    window.addEventListener("guided-demo-step-complete", handleGuidedStepComplete);
     window.addEventListener("guided-demo-step-active", handleGuidedStepActive);
     return () => {
-      window.removeEventListener("guided-demo-step-complete", handleGuidedStepComplete);
       window.removeEventListener("guided-demo-step-active", handleGuidedStepActive);
       if (approvalTimerRef.current) window.clearTimeout(approvalTimerRef.current);
     };
@@ -206,9 +199,9 @@ export function BudgetBuilder({ estimateStatus = "ready", feedStageActionLabel, 
 
   const isApproved = estimateFlowStatus === "approved";
   const estimateSent = estimateFlowStatus !== "ready";
-  const approvalClassName = isApproved ? "approved" : "pending";
-  const stageLabel = isApproved ? "Client approved" : estimateSent ? "Sent for approval" : "Ready for approval";
-  const stageActionLabel = isApproved ? "Generate project" : estimateSent ? "Awaiting approval" : (feedStageActionLabel ?? "Send estimate");
+  const approvalClassName = isApproved ? "approved" : estimateSent ? "sent" : "pending";
+  const stageLabel = isApproved ? "Client approved" : estimateSent ? "Awaiting client approval" : "Ready for approval";
+  const stageActionLabel = isApproved ? "Generate project" : estimateSent ? "Awaiting client approval" : (feedStageActionLabel ?? "Send estimate");
   const stageClassName = isApproved
     ? "feed-stage-card budget-stage-card approved"
     : estimateSent
@@ -281,7 +274,7 @@ export function BudgetBuilder({ estimateStatus = "ready", feedStageActionLabel, 
             </div>
             {quoteDeliverables.map((item, index) => (
               <div
-                className={isApproved ? "budget-deliverable-row approved" : "budget-deliverable-row pending"}
+                className={isApproved ? "budget-deliverable-row approved" : estimateSent ? "budget-deliverable-row sent" : "budget-deliverable-row pending"}
                 key={item.id}
                 style={{ "--approval-delay": `${index * 100 + 120}ms` } as CSSProperties}
               >
@@ -413,6 +406,7 @@ export function BudgetBuilder({ estimateStatus = "ready", feedStageActionLabel, 
               <button
                 className="feed-stage-action"
                 data-tour-anchor="budget-estimate-stage"
+                data-stage-state={isApproved ? "approved" : estimateSent ? "sent" : "ready"}
                 onClick={isApproved ? onProjectNavigate : sendEstimateForApproval}
                 type="button"
               >
@@ -422,13 +416,16 @@ export function BudgetBuilder({ estimateStatus = "ready", feedStageActionLabel, 
           </section>
 
           <section className={estimateSent ? "budget-estimate-summary approved" : "budget-estimate-summary"}>
+            <button className="budget-export-pdf" type="button" aria-label="Export PDF" title="Export PDF">
+              <FontAwesomeIcon icon={faFilePdf} />
+            </button>
             <small>Estimate total</small>
             <strong>{formatCurrency(quoteTotals.income)}</strong>
             <p>Website, 15s video, 3D banner, concept, and project management.</p>
             {estimateSent && <em>{isApproved ? "Total budget approved" : "Total budget sent for approval"}</em>}
             <span>{deliverables.length} deliverables</span>
             <span>{quoteTotals.hours} planned hours</span>
-            <span>Total margin 36%</span>
+            <span>Payment conditions 30 days</span>
           </section>
 
           <section className="budget-side-card team">

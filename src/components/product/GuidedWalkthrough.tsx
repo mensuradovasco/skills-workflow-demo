@@ -7,6 +7,7 @@ type GuidedWalkthroughProps = {
   onActiveChange: (active: boolean) => void;
   onNavigate: (target: GuidedDemoTarget) => void;
   onRestartReady?: (restart: () => void) => void;
+  requestedStepIndex?: number | null;
   steps: GuidedDemoStep[];
 };
 
@@ -28,6 +29,7 @@ export function GuidedWalkthrough({
   onActiveChange,
   onNavigate,
   onRestartReady,
+  requestedStepIndex,
   steps,
 }: GuidedWalkthroughProps) {
   const [activeIndex, setActiveIndex] = useState(() => readStoredStep(steps.length));
@@ -37,6 +39,7 @@ export function GuidedWalkthrough({
   const tooltipRef = useRef<HTMLElement | null>(null);
   const hasScrolledToStep = useRef(false);
   const lastRectRef = useRef<string>("");
+  const lastTargetRef = useRef<string>("");
   const currentStep = steps[activeIndex] ?? steps[0];
 
   const restart = useCallback(() => {
@@ -52,8 +55,16 @@ export function GuidedWalkthrough({
 
   useEffect(() => {
     if (!active || !currentStep) return;
-    onNavigate(currentStep.target);
-    window.dispatchEvent(new CustomEvent("guided-demo-step-active", { detail: { id: currentStep.id } }));
+    const targetKey = `${currentStep.target.step}:${currentStep.target.view ?? ""}`;
+    if (lastTargetRef.current !== targetKey) {
+      lastTargetRef.current = targetKey;
+      onNavigate(currentStep.target);
+    }
+    const eventDetail = { detail: { id: currentStep.id } };
+    const mountedFrame = window.setTimeout(() => {
+      window.dispatchEvent(new CustomEvent("guided-demo-step-active", eventDetail));
+    }, 120);
+    return () => window.clearTimeout(mountedFrame);
   }, [active, activeIndex, currentStep, onNavigate]);
 
   useLayoutEffect(() => {
@@ -89,7 +100,6 @@ export function GuidedWalkthrough({
     let attempts = 0;
     let cancelled = false;
     setIsWaiting(true);
-    setTargetRect(null);
     hasScrolledToStep.current = false;
 
     const syncRect = (element: HTMLElement) => {
@@ -170,6 +180,11 @@ export function GuidedWalkthrough({
     window.localStorage.setItem(STORAGE_KEY, String(boundedIndex));
   }, [steps.length]);
 
+  useEffect(() => {
+    if (!active || requestedStepIndex == null) return;
+    goToStep(requestedStepIndex);
+  }, [active, goToStep, requestedStepIndex]);
+
   const goNext = useCallback(() => {
     window.dispatchEvent(new CustomEvent("guided-demo-step-complete", { detail: { id: currentStep.id } }));
     if (activeIndex >= steps.length - 1) {
@@ -183,6 +198,14 @@ export function GuidedWalkthrough({
   const goBack = useCallback(() => {
     goToStep(Math.max(activeIndex - 1, 0));
   }, [activeIndex, goToStep]);
+
+  useEffect(() => {
+    if (!active || !currentStep?.autoAdvanceMs) return;
+    const timer = window.setTimeout(() => {
+      goNext();
+    }, currentStep.autoAdvanceMs);
+    return () => window.clearTimeout(timer);
+  }, [active, activeIndex, currentStep, goNext]);
 
   const activateTarget = useCallback(() => {
     const element = document.querySelector<HTMLElement>(currentStep.selector);
@@ -201,13 +224,13 @@ export function GuidedWalkthrough({
   }, [currentStep.advanceDelayMs, currentStep.selector, goNext]);
 
   const handlePrimaryAction = useCallback(() => {
-    if (activeIndex >= steps.length - 1) {
+    if (activeIndex >= steps.length - 1 || currentStep.nextAdvancesOnly) {
       goNext();
       return;
     }
 
     activateTarget();
-  }, [activateTarget, activeIndex, goNext, steps.length]);
+  }, [activateTarget, activeIndex, currentStep.nextAdvancesOnly, goNext, steps.length]);
 
   const tooltipPosition = useMemo(() => {
     if (!targetRect) {

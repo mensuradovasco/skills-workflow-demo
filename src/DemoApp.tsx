@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import {
@@ -43,11 +43,11 @@ import { ClientBrief } from "./components/product/ClientBrief";
 import { ClientList } from "./components/product/ClientList";
 import { ExecutionProofing } from "./components/product/ExecutionProofing";
 import {
+  AIDock,
   GUIDED_DEMO_STEP_KEY,
   GUIDED_DEMO_VERSION,
   GUIDED_DEMO_VERSION_KEY,
-  GuidedWalkthrough,
-} from "./components/product/GuidedWalkthrough";
+} from "./components/product/AIDock";
 import { Profitability } from "./components/product/Profitability";
 import { ProjectSetup } from "./components/product/ProjectSetup";
 import { ResourcePlanner } from "./components/product/ResourcePlanner";
@@ -96,12 +96,20 @@ const railItems: Array<{ icon: IconDefinition; label: string; workspace: Workspa
 export function DemoApp() {
   const initialRoute = getInitialRoute();
   const [activeStep, setActiveStep] = useState<DemoStep>(initialRoute.step);
+  const [navHistory, setNavHistory] = useState<DemoStep[]>([initialRoute.step]);
+
+  useEffect(() => {
+    setNavHistory((prev) => {
+      if (prev[prev.length - 1] === activeStep) return prev;
+      const filtered = prev.filter((s) => s !== activeStep);
+      return [...filtered, activeStep].slice(-3);
+    });
+  }, [activeStep]);
   const [activeWorkspace, setActiveWorkspace] = useState<WorkspaceView | null>(initialRoute.workspace);
   const [isChatOpen, setIsChatOpen] = useState(false);
-  const [isAssistantOpen, setIsAssistantOpen] = useState(false);
   const [isAutoPlaying, setIsAutoPlaying] = useState(false);
   const [isGuidedDemoActive, setIsGuidedDemoActive] = useState(() => readGuidedDemoPreference());
-  const [restartGuidedDemo, setRestartGuidedDemo] = useState<(() => void) | null>(null);
+  const [guidedStepRequest, setGuidedStepRequest] = useState<number | null>(null);
   const [tourView, setTourView] = useState<TourView>(null);
 
   const activeIndex = useMemo(
@@ -146,43 +154,48 @@ export function DemoApp() {
   const startGuidedDemoFromRequest = useCallback(() => {
     window.localStorage.setItem(GUIDED_DEMO_VERSION_KEY, GUIDED_DEMO_VERSION);
     window.localStorage.setItem(GUIDED_DEMO_STEP_KEY, "1");
+    setGuidedStepRequest(null);
+    window.setTimeout(() => setGuidedStepRequest(1), 0);
     setGuidedDemoActive(true);
     setActiveWorkspace(null);
     setTourView(guidedDemoSteps[1]?.target.view ?? null);
     setActiveStep(guidedDemoSteps[1]?.target.step ?? "brief");
   }, [setGuidedDemoActive]);
 
-  return (
-    <AppShell activeStep={activeStep} guidedActive={isGuidedDemoActive} onStepChange={(step) => {
-      setActiveWorkspace(null);
+  const jumpToGuidedStage = useCallback((step: DemoStep) => {
+    const guidedIndex = firstGuidedIndexForStage(step);
+    setActiveWorkspace(null);
+    setIsAutoPlaying(false);
+
+    if (guidedIndex == null) {
       setTourView(null);
       setActiveStep(step);
-    }}>
-      <section className="demo-stage" key={`${activeStep}-${activeWorkspace ?? "flow"}`}>
-        <div className="stage-copy">
-          <div>
-            <div className="stage-meta">
-              <span className="eyebrow">{activeMeta.verb}</span>
-            </div>
-            <h2>{stageTitle(activeStep)}</h2>
-            <p>{stageDescription(activeStep)}</p>
-          </div>
-          <div className="stage-actions">
-            <button className="ghost-button" onClick={() => {
-              if (isGuidedDemoActive) {
-                setGuidedDemoActive(false);
-                return;
-              }
-              restartGuidedDemo?.();
-            }}>
-              {isGuidedDemoActive ? "Exit guided demo" : "Start guided demo"}
-            </button>
-          </div>
-        </div>
-        <div className={isAssistantOpen ? "product-window with-assistant" : "product-window"}>
+      return;
+    }
+
+    const target = guidedDemoSteps[guidedIndex].target;
+    setGuidedStepRequest(null);
+    window.setTimeout(() => setGuidedStepRequest(guidedIndex), 0);
+    window.localStorage.setItem(GUIDED_DEMO_STEP_KEY, String(guidedIndex));
+    setTourView(target.view ?? null);
+    setActiveStep(target.step);
+    setGuidedDemoActive(true);
+  }, [setGuidedDemoActive]);
+
+  return (
+    <AppShell activeStep={activeStep} guidedActive={isGuidedDemoActive} onStepChange={jumpToGuidedStage}>
+      <section className="demo-stage">
+        <div className="product-window">
           <div className="skills-topbar">
             <div className="skills-logo">
-              <img src="/assets/skills-logo-white.png" alt="Skills Workflow" />
+              <img src="https://cdn.prod.website-files.com/689701f28dcfeea6454a8a48/69e8c8ea231a90b0dd55cfb8_logo-1-white%402x.png" alt="Skills Workflow" />
+            </div>
+            <div className="skills-breadcrumbs">
+              {navHistory.map((step, idx, arr) => (
+                <span key={`${step}-${idx}`}>
+                  {idx === arr.length - 1 ? <strong>{crumbLabel(step)}</strong> : crumbLabel(step)}
+                </span>
+              ))}
             </div>
             <div className="topbar-tools">
               <button aria-label="Search"><FontAwesomeIcon icon={faMagnifyingGlass} /></button>
@@ -254,25 +267,14 @@ export function DemoApp() {
               </div>
               {isChatOpen && <ChatDrawer onClose={() => setIsChatOpen(false)} />}
             </div>
-            {isAssistantOpen && <AssistantPanel onClose={() => setIsAssistantOpen(false)} />}
           </div>
-          {!isAssistantOpen && (
-            <button
-              aria-label="Open assistant"
-              className="assistant-launcher"
-              onClick={() => setIsAssistantOpen(true)}
-              type="button"
-            >
-              <FontAwesomeIcon icon={faWandMagicSparkles} />
-            </button>
-          )}
         </div>
       </section>
-      <GuidedWalkthrough
+      <AIDock
         active={isGuidedDemoActive}
         onActiveChange={setGuidedDemoActive}
         onNavigate={navigateForGuidedDemo}
-        onRestartReady={(restart) => setRestartGuidedDemo(() => restart)}
+        requestedStepIndex={guidedStepRequest}
         steps={guidedDemoSteps}
       />
     </AppShell>
@@ -280,20 +282,29 @@ export function DemoApp() {
 }
 
 const taskImages = [
-  "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=120&q=80",
-  "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=120&q=80",
-  "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=120&q=80",
-  "https://images.unsplash.com/photo-1541643600914-78b084683601?auto=format&fit=crop&w=120&q=80",
-  "https://images.unsplash.com/photo-1484704849700-f032a568e944?auto=format&fit=crop&w=120&q=80",
+  "https://images.unsplash.com/photo-1554866585-cd94860890b7?auto=format&fit=crop&w=240&q=80",
+  "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=240&q=80",
+  "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=240&q=80",
+  "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?auto=format&fit=crop&w=240&q=80",
+  "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?auto=format&fit=crop&w=240&q=80",
 ];
 
 const homeTasks = [
-  ["Coca-Cola - Summer Assets", "Coca-Cola", "Today"],
-  ["Define idea", "Coca-Cola", "Done"],
-  ["Design landing page", "Coca-Cola", "2 days"],
-  ["Edit 15s video", "Coca-Cola", "4 days"],
-  ["Create 3D asset", "Coca-Cola", "5 days"],
+  ["Design landing page hero", "Coca-Cola Summer Assets", "Today"],
+  ["Color grade hero shot", "Spotify Q3 Review", "1 day"],
+  ["Build 3D digital banner", "Samsung Galaxy Launch", "2 days"],
+  ["Storyboard product reveal", "L'Oreal Beauty Cutdown", "4 days"],
 ];
+
+// RAG mapping for the My tasks badges. Today is the most urgent (red),
+// upcoming due dates degrade through amber to green, and Done is calm green.
+function taskDueTone(due: string): "red" | "amber" | "green" | "neutral" {
+  const value = due.toLowerCase();
+  if (value === "today" || value === "overdue") return "red";
+  if (value.startsWith("1 ") || value.startsWith("2 ")) return "amber";
+  if (value === "done" || value.match(/^\d+\s+days?$/)) return "green";
+  return "neutral";
+}
 
 const homeMessages = [
   ["Sofia Martins", "Can we review the €15,000 estimate before noon?"],
@@ -342,43 +353,46 @@ const homeCapacity = [
     role: "Account Management",
     load: 62,
     color: "#f5b93f",
-    avatar: campaign.team[0].avatar,
+    avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=96&q=80",
   },
   {
     name: "Arthur",
     role: "Design",
     load: 74,
     color: "#ed6b65",
-    avatar: campaign.team[1].avatar,
-  },
-  {
-    name: "Daniel",
-    role: "Video",
-    load: 68,
-    color: "#ff914d",
-    avatar: campaign.team[2].avatar,
+    avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=96&q=80",
   },
   {
     name: "Sofia",
     role: "Client Services",
     load: 45,
     color: "#63c7c0",
-    avatar: chatMessages[0].avatar,
+    avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=96&q=80",
   },
   {
     name: "Maya",
     role: "Creative Direction",
     load: 58,
     color: "#7d69d8",
-    avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=96&q=80",
+    avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=96&q=80",
   },
 ];
 
+// Different teammates than the capacity panel — these are the people away
+// this week, so the avatars don't repeat what's already in Team Capacity.
+const homeVacations = [
+  { name: "Liam", avatar: "https://images.unsplash.com/photo-1531427186611-ecfd6d936c79?auto=format&fit=crop&w=96&q=80" },
+  { name: "Aiko", avatar: "https://images.unsplash.com/photo-1557555187-23d685287bc3?auto=format&fit=crop&w=96&q=80" },
+  { name: "Marco", avatar: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=96&q=80" },
+  { name: "Priya", avatar: "https://images.unsplash.com/photo-1521252659862-eec69941b071?auto=format&fit=crop&w=96&q=80" },
+  { name: "Diego", avatar: "https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?auto=format&fit=crop&w=96&q=80" },
+];
+
 const spotlightImages = [
-  "https://images.unsplash.com/photo-1496747611176-843222e1e57c?auto=format&fit=crop&w=420&q=80",
-  "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=420&q=80",
-  "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=420&q=80",
-  "https://images.unsplash.com/photo-1541643600914-78b084683601?auto=format&fit=crop&w=420&q=80",
+  "https://images.unsplash.com/photo-1565962622954-efc7f367ea0e?auto=format&fit=crop&w=420&q=80",
+  "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=420&q=80",
+  "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=420&q=80",
+  "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?auto=format&fit=crop&w=420&q=80",
 ];
 
 function WorkspaceContent({ workspace }: { workspace: WorkspaceView }) {
@@ -606,10 +620,17 @@ function StepContent({
   if (step === "request") {
     return (
       <div className="home-screen">
-        <div className="home-top-strip">
-          <span><FontAwesomeIcon icon={faHouse} /></span>
-          <strong>Home</strong>
-        </div>
+        <header className="document-header home-document-header">
+          <div className="document-header-main">
+            <div className="document-title">
+              <span className="document-icon"><FontAwesomeIcon icon={faHouse} /></span>
+              <strong>Home</strong>
+            </div>
+            <div className="document-actions">
+              <button aria-label="More actions"><FontAwesomeIcon icon={faEllipsis} /></button>
+            </div>
+          </div>
+        </header>
         <div className="home-main">
           <div className="welcome-copy">
             <h3>Hi Rachel,</h3>
@@ -622,13 +643,17 @@ function StepContent({
           <div className="mini-section">
             <h4>My tasks</h4>
             {homeTasks.map(([name, client, due], index) => (
-              <div className="task-row fade-up" key={name} style={stepDelay(index * 80)}>
+              <div
+                className={`task-row fade-up${index === 0 ? " is-active" : ""}`}
+                key={name}
+                style={stepDelay(index * 80)}
+              >
                 <img className="task-thumb" src={taskImages[index]} alt="" />
                 <div>
                   <strong>{name}</strong>
-                  <small>{client}</small>
+                  <small className="task-client">{client}</small>
                 </div>
-                <Badge tone={due === "Overdue" ? "red" : "neutral"}>{due}</Badge>
+                <Badge tone={taskDueTone(due)}>{due}</Badge>
               </div>
             ))}
           </div>
@@ -637,15 +662,15 @@ function StepContent({
           <div className="spotlight">
             <h4>Project Spotlight</h4>
             <p>Most recent and delayed</p>
-            {["Coca-Cola Summer Assets", "Estimate approved", "Landing page", "Delivery list"].map((item, index) => (
+            {["Coca-Cola summer assets", "Nike hero refresh", "Samsung launch page"].map((item, index) => (
               <div className="spotlight-tile" key={item}>
                 <img src={spotlightImages[index]} alt="" />
                 <small>{item}</small>
               </div>
             ))}
           </div>
-          <div className="team-cloud">
-            <h4>Your Team's Capacity this week</h4>
+          <div className="team-week">
+            <h4>Your team this week</h4>
             <div className="capacity-list">
               {homeCapacity.map((member) => (
                 <div className="capacity-row" key={member.name}>
@@ -661,13 +686,13 @@ function StepContent({
                 </div>
               ))}
             </div>
-          </div>
-          <div className="vacations-panel">
-            <h4>On vacations</h4>
-            <div>
-              {campaign.team.map((person) => (
-                <img className="avatar photo" src={person.avatar} alt="" key={person.name} />
-              ))}
+            <div className="team-week-vacations" aria-label="On vacations">
+              <span className="team-week-vacations-label">On vacations</span>
+              <div className="team-week-vacations-list">
+                {homeVacations.map((person) => (
+                  <img className="avatar photo" src={person.avatar} alt={person.name} key={person.name} />
+                ))}
+              </div>
             </div>
           </div>
           <div className="messages-panel">
@@ -680,25 +705,19 @@ function StepContent({
             ))}
           </div>
         </div>
-        <div className="request-notification slide-in" data-tour-anchor="client-request" style={stepDelay(520)}>
-          <div className="brand-avatar client-logo-badge">
-            <img src={campaign.clientLogo} alt={campaign.client} />
+        {guidedMode && (
+          <div className="request-notification slide-in" data-tour-anchor="client-request" style={stepDelay(520)}>
+            <div className="brand-avatar client-logo-badge">
+              <img src={campaign.clientLogo} alt={campaign.client} />
+            </div>
+            <div>
+              <small>New client request</small>
+              <strong>{campaign.client}</strong>
+              <span>{campaign.campaign}</span>
+              <em>Scope: website, 15s video and 3D banner</em>
+            </div>
           </div>
-          <div>
-            <small>New client request</small>
-            <strong>{campaign.client}</strong>
-            <span>{campaign.campaign}</span>
-            <em>Scope: website, 15s video and 3D banner</em>
-          </div>
-          {!guidedMode && (
-            <HotspotButton
-              icon="magic"
-              label="Structure Brief"
-              tooltip="Click the notification to turn the incoming request into a structured brief."
-              onClick={onStartGuidedDemoFromRequest}
-            />
-          )}
-        </div>
+        )}
       </div>
     );
   }
@@ -877,6 +896,27 @@ function HotspotButton({
   );
 }
 
+function stageTitleShort(step: DemoStep) {
+  const meta = demoSteps.find((item) => item.id === step);
+  return meta?.label ?? "Workspace";
+}
+
+function crumbLabel(step: DemoStep): string {
+  const labels: Record<DemoStep, string> = {
+    request: "Home",
+    brief: "Coca-Cola Summer Campaign Brief",
+    budget: "Coca-Cola Summer Assets Budget",
+    approval: "Coca-Cola Summer Assets Budget",
+    project: "Coca-Cola - Summer Assets",
+    tasks: "Coca-Cola - Summer Assets",
+    resources: "Resource Allocation",
+    execution: "Coca-Cola - Summer Assets",
+    proofing: "Create 3D asset",
+    profitability: "Coca-Cola - Summer Assets",
+  };
+  return labels[step] ?? stageTitleShort(step);
+}
+
 function stageTitle(step: DemoStep) {
   const titles: Record<DemoStep, string> = {
     request: "Coca-Cola sends a summer asset request.",
@@ -933,6 +973,20 @@ function railIndexForWorkspace(workspace: WorkspaceView | null, step: DemoStep) 
     profitability: 8,
   };
   return indexes[workspace];
+}
+
+function firstGuidedIndexForStage(step: DemoStep) {
+  const stageIndex: Partial<Record<DemoStep, number>> = {
+    request: 0,
+    brief: 1,
+    budget: 2,
+    approval: 2,
+    project: 4,
+    resources: 8,
+    proofing: 10,
+  };
+
+  return stageIndex[step] ?? null;
 }
 
 function getInitialRoute(): { step: DemoStep; workspace: WorkspaceView | null } {

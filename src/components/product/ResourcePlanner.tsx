@@ -17,6 +17,7 @@ import {
   faXmark,
 } from "@fortawesome/free-solid-svg-icons";
 import { campaign, projectWorkItems, resourceBookings } from "../../data/cocaColaCampaign";
+import { FeedDocumentView } from "./DocumentFrame";
 import { ProofingContent } from "./ExecutionProofing";
 import { WorkspaceFrame } from "./WorkspaceFrame";
 
@@ -46,7 +47,7 @@ type ResizeInteraction = {
   startX: number;
 };
 
-type ResourceSearchPhase = "idle" | "dropdown" | "typing" | "selected" | "dragging" | "assigned";
+type ResourceSearchPhase = "idle" | "dropdown" | "typing" | "selected" | "dragging" | "assigned" | "clearing";
 
 const calendarDays = ["25", "26", "27", "28", "29", "30", "01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21"];
 
@@ -81,33 +82,6 @@ const resourcePeople = [
   ...extraResources.filter((extra) => !campaign.team.some((member) => member.name === extra.name)),
 ];
 
-const photoshopResourcePeople = [
-  campaign.team.find((person) => person.name === "Arthur"),
-  extraResources.find((person) => person.name === "Leo"),
-  {
-    name: "Ines",
-    role: "Visual Designer",
-    load: 42,
-    skill: "Photoshop",
-    avatar: "https://images.unsplash.com/photo-1554151228-14d9def656e4?auto=format&fit=crop&w=96&q=80",
-  },
-  {
-    name: "Clara",
-    role: "Retoucher",
-    load: 36,
-    skill: "Photoshop",
-    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=96&q=80",
-  },
-  {
-    name: "Bruno",
-    role: "Digital Designer",
-    load: 51,
-    skill: "Photoshop",
-    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=96&q=80",
-  },
-  campaign.team.find((person) => person.name === "Maya"),
-].filter((person): person is (typeof resourcePeople)[number] => Boolean(person));
-
 const leaveBookings = [
   { person: "Rachel", label: "Leave", start: 14, span: 3 },
   { person: "Arthur", label: "Leave", start: 20, span: 2 },
@@ -117,7 +91,7 @@ const leaveBookings = [
   { person: "Clara", label: "Leave", start: 8, span: 2 },
 ];
 
-const photoshopPeople = new Set(photoshopResourcePeople.map((person) => person.name));
+const photoshopPeople = new Set(["Arthur", "Leo", "Maya"]);
 
 function getInitialBacklog() {
   return initialBacklog.map((item) => {
@@ -140,11 +114,14 @@ function getInitialAssignments(): ScheduledItem[] {
 
 export function ResourcePlanner() {
   const [openJob, setOpenJob] = useState<string | null>(null);
+  const [autoApproveProof, setAutoApproveProof] = useState(false);
+  const [modalTab, setModalTab] = useState<"FEED" | "PROOFING">("PROOFING");
   const [backlog, setBacklog] = useState(getInitialBacklog);
   const [assignments, setAssignments] = useState<ScheduledItem[]>(getInitialAssignments);
   const [resizeInteraction, setResizeInteraction] = useState<ResizeInteraction | null>(null);
   const [resourceSearchPhase, setResourceSearchPhase] = useState<ResourceSearchPhase>("idle");
   const [resourceSearchText, setResourceSearchText] = useState("");
+  const [resourceResultsVisible, setResourceResultsVisible] = useState(false);
   const [draggingJob, setDraggingJob] = useState<BacklogItem | null>(null);
   const [dropOffset, setDropOffset] = useState<{ x: number; y: number } | null>(null);
   const ghostRef = useRef<HTMLSpanElement | null>(null);
@@ -209,6 +186,7 @@ export function ResourcePlanner() {
     clearAutomationTimers();
     setResourceSearchPhase("idle");
     setResourceSearchText("");
+    setResourceResultsVisible(false);
     setDraggingJob(null);
     setBacklog(getInitialBacklog());
     setAssignments(getInitialAssignments());
@@ -221,9 +199,10 @@ export function ResourcePlanner() {
     setAssignments(getInitialAssignments());
     setResourceSearchPhase("dropdown");
     setResourceSearchText("");
+    setResourceResultsVisible(false);
     setDraggingJob(null);
 
-    const word = "photo";
+    const word = "photoshop";
     automationTimers.current.push(window.setTimeout(() => {
       setResourceSearchPhase("typing");
       word.split("").forEach((_, index) => {
@@ -234,15 +213,16 @@ export function ResourcePlanner() {
     }, 360));
 
     automationTimers.current.push(window.setTimeout(() => {
+      setResourceResultsVisible(true);
       setResourceSearchPhase("selected");
-    }, 960));
+    }, 1260));
 
     automationTimers.current.push(window.setTimeout(() => {
       const nextJob = getInitialBacklog()[0];
       if (!nextJob) return;
       setDraggingJob(nextJob);
       setResourceSearchPhase("dragging");
-    }, 1420));
+    }, 1720));
 
     automationTimers.current.push(window.setTimeout(() => {
       const nextJob = getInitialBacklog()[0];
@@ -263,7 +243,7 @@ export function ResourcePlanner() {
       ]);
       setDraggingJob(null);
       setResourceSearchPhase("assigned");
-    }, 2180));
+    }, 2480));
   };
 
   const startResize = (event: MouseEvent<HTMLSpanElement>, item: ScheduledItem, mode: "start" | "end") => {
@@ -309,19 +289,31 @@ export function ResourcePlanner() {
   useEffect(() => {
     const handleGuidedStep = (event: Event) => {
       const stepId = (event as CustomEvent<{ id?: string }>).detail?.id;
+      if (stepId === "resource-open-job") {
+        setOpenJob(null);
+        setModalTab("FEED");
+        setAutoApproveProof(false);
+        return;
+      }
+
+      if (stepId === "resource-job-proofing-tab") {
+        setOpenJob("Create 3D asset");
+        setModalTab("FEED");
+        setAutoApproveProof(false);
+        return;
+      }
+
       if (stepId === "resource-proofing-track") {
         setOpenJob("Create 3D asset");
+        setModalTab("PROOFING");
+        setAutoApproveProof(true);
         return;
       }
 
       if (stepId === "resource-planning-view") {
         setOpenJob(null);
-        resetSearchAutomation();
+        runSearchAutomation();
         return;
-      }
-
-      if (stepId === "resource-open-job") {
-        setOpenJob(null);
       }
     };
 
@@ -333,6 +325,7 @@ export function ResourcePlanner() {
 
   const openProofingJob = (item: ScheduledItem) => {
     if (item.title !== "Create 3D asset") return;
+    setAutoApproveProof(false);
     setOpenJob(item.title);
   };
 
@@ -348,12 +341,16 @@ export function ResourcePlanner() {
         <div className="allocation-toolbar">
           <button><FontAwesomeIcon icon={faFilter} /> Auto</button>
           <label
-            className={resourceSearchPhase !== "idle" ? "allocation-search active" : "allocation-search"}
+            className={[
+              "allocation-search",
+              resourceSearchPhase !== "idle" ? "active" : "",
+              resourceSearchPhase === "clearing" ? "clearing" : "",
+            ].filter(Boolean).join(" ")}
             data-tour-anchor="resource-search"
             onClick={runSearchAutomation}
           >
             <FontAwesomeIcon icon={faMagnifyingGlass} />
-            {resourceSearchPhase === "selected" || resourceSearchPhase === "dragging" || resourceSearchPhase === "assigned" ? (
+            {resourceSearchPhase === "selected" || resourceSearchPhase === "dragging" || resourceSearchPhase === "assigned" || resourceSearchPhase === "clearing" ? (
               <span className="allocation-skill-badge">Photoshop</span>
             ) : (
               <input placeholder="Search" readOnly value={resourceSearchText} />
@@ -361,7 +358,7 @@ export function ResourcePlanner() {
             {(resourceSearchPhase === "dropdown" || resourceSearchPhase === "typing") && (
               <span className="allocation-skill-dropdown">
                 <button type="button"><em>Department</em> Creative</button>
-                <button className={resourceSearchText === "photo" ? "selected" : ""} type="button">
+                <button className={resourceSearchText === "photoshop" ? "selected" : ""} type="button">
                   <em>Skill</em> Photoshop
                 </button>
                 <button type="button"><em>Skill</em> Photo retouching</button>
@@ -389,21 +386,18 @@ export function ResourcePlanner() {
               </div>
             </div>
             <div className="allocation-rows" ref={rowsRef}>
-              {(resourceSearchPhase === "selected" || resourceSearchPhase === "dragging" || resourceSearchPhase === "assigned"
-                ? photoshopResourcePeople
-                : resourcePeople
-              ).map((person) => (
+              {resourcePeople.map((person, index) => (
                 <div
                   className={[
                     "allocation-row",
-                    resourceSearchPhase === "selected" || resourceSearchPhase === "dragging" || resourceSearchPhase === "assigned" ? "filtered" : "",
+                    resourceResultsVisible ? "filtered" : "",
                     photoshopPeople.has(person.name) ? "skill-match" : "",
                   ].filter(Boolean).join(" ")}
                   data-person={person.name}
                   key={person.name}
                   onDragOver={(event) => event.preventDefault()}
                   onDrop={(event) => handleDrop(event, person.name, 11)}
-                  style={{ "--row-depth": rowDepthFor(person.name) } as CSSProperties}
+                  style={{ "--row-depth": rowDepthFor(person.name), "--result-delay": `${Math.min(index, 5) * 55}ms` } as CSSProperties}
                 >
                   <div className="allocation-person">
                     <img className="avatar photo" src={person.avatar} alt="" />
@@ -502,11 +496,32 @@ export function ResourcePlanner() {
             </header>
             <nav className="resource-job-tabs">
               {["FEED", "INFO", "TASKS", "FILES", "PROOFING", "APPROVALS", "HISTORY"].map((tab) => (
-                <button className={tab === "PROOFING" ? "active" : ""} key={tab}>{tab}</button>
+                <button
+                  className={tab === modalTab ? "active" : ""}
+                  data-tour-anchor={tab === "PROOFING" ? "job-proofing-tab" : undefined}
+                  key={tab}
+                  onClick={() => {
+                    if (tab === "FEED" || tab === "PROOFING") setModalTab(tab as "FEED" | "PROOFING");
+                  }}
+                  type="button"
+                >
+                  {tab}
+                </button>
               ))}
             </nav>
             <div className="resource-job-proofing" data-tour-anchor="resource-job-proofing">
-              <ProofingContent />
+              {modalTab === "FEED" ? (
+                <FeedDocumentView
+                  feedChecklist={["Brief reviewed", "Asset uploaded", "Hours logged"]}
+                  feedStageLabel="In progress"
+                  feedStageActionLabel="Move to proofing"
+                  feedStageTimestamp="04 Jun 2026, 14:22"
+                  feedTeamAnimated
+                  onFeedStageAction={() => setModalTab("PROOFING")}
+                />
+              ) : (
+                <ProofingContent autoApprove={autoApproveProof} />
+              )}
             </div>
           </section>
         </div>,
