@@ -662,10 +662,15 @@ function StepContent({
           <div className="spotlight">
             <h4>Project Spotlight</h4>
             <p>Most recent and delayed</p>
-            {["Coca-Cola summer assets", "Nike hero refresh", "Samsung launch page"].map((item, index) => (
-              <div className="spotlight-tile" key={item}>
+            {[
+              { name: "Coca-Cola summer assets", stage: "Under approval" },
+              { name: "Nike hero refresh", stage: "In progress" },
+              { name: "Samsung launch page", stage: "In progress" },
+            ].map((project, index) => (
+              <div className="spotlight-tile" key={project.name} data-stage={project.stage.toLowerCase().replace(/\s+/g, "-")}>
                 <img src={spotlightImages[index]} alt="" />
-                <small>{item}</small>
+                <span className="spotlight-stage">{project.stage}</span>
+                <small>{project.name}</small>
               </div>
             ))}
           </div>

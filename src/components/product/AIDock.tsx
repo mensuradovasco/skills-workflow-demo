@@ -71,7 +71,7 @@ export function AIDock({
       if (!launcher || !dock) return;
       const lr = launcher.getBoundingClientRect();
       const snappedRight = window.innerWidth - lr.right;
-      const desiredBottom = (window.innerHeight - lr.top) + 8;
+      const desiredBottom = (window.innerHeight - lr.top) + 2;
       const snappedBottom = Math.max(12, desiredBottom);
       setDockPos({ right: snappedRight, bottom: snappedBottom });
     };
@@ -140,7 +140,7 @@ export function AIDock({
       const launcherEl = document.querySelector<HTMLElement>(".ai-dock-launcher");
       if (!launcherEl) return;
       const lr = launcherEl.getBoundingClientRect();
-      const snappedBottom = window.innerHeight - lr.top + 8;
+      const snappedBottom = window.innerHeight - lr.top + 2;
       setDockPos((prev) => (prev && prev.bottom !== snappedBottom ? { right: prev.right, bottom: snappedBottom } : prev));
     };
     repinToLauncher();
