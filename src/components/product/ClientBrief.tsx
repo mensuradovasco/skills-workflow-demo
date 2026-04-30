@@ -18,10 +18,13 @@ export function ClientBrief({ onGenerateBudget }: ClientBriefProps) {
         "Deliverables detected",
       ]}
       feedDescriptionContent={<BriefDescription />}
+      feedHideChecklist
+      feedHideHistorySearch
       feedStageActionAnchor="generate-budget-from-brief"
       feedStageActionLabel="Generate Budget"
       feedStageLabel="Brief structured"
       feedStageTimestamp="04 Jun 2026, 09:48"
+      feedReviewAnimation
       feedTeamAnimated
       hideToolbar
       icon={faFileLines}
@@ -55,7 +58,7 @@ function BriefDescription() {
       <div className="feed-documents brief-attachments">
         <article>
           <img
-            src="https://images.unsplash.com/photo-1629203851122-3726ecdf080e?auto=format&fit=crop&w=180&q=80"
+            src="https://images.unsplash.com/photo-1554866585-cd94860890b7?auto=format&fit=crop&w=360&q=80"
             alt="Coca-Cola summer reference"
           />
           <div>

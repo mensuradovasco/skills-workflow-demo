@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 64" role="img" aria-label="Skills Workflow">
+  <g fill="none" fill-rule="evenodd">
+    <path d="M21 14h15a14 14 0 0 1 14 14v15H35a14 14 0 0 1-14-14V14Z" fill="#2D73BE"/>
+    <path d="M14 28h15a14 14 0 0 1 14 14v8H28a14 14 0 0 1-14-14v-8Z" fill="#57C69A"/>
+    <text x="68" y="30" fill="#182033" font-family="Open Sans, Arial, sans-serif" font-size="19" font-weight="800">skills</text>
+    <text x="68" y="49" fill="#4D5A6A" font-family="Open Sans, Arial, sans-serif" font-size="18" font-weight="700">workflow</text>
+  </g>
+</svg>

@@ -42,6 +42,15 @@ export function WorkspaceFrame({
           <button aria-label="More options"><FontAwesomeIcon icon={faEllipsisVertical} /></button>
         </div>
       </header>
+      {tabs.length > 0 && (
+        <nav className="workspace-tabs" aria-label={`${title} views`}>
+          {tabs.map((tab, index) => (
+            <button className={index === 0 ? "active" : ""} key={tab} type="button">
+              {tab}
+            </button>
+          ))}
+        </nav>
+      )}
       {children}
     </section>
   );

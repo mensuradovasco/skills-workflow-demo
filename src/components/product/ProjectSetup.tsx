@@ -14,6 +14,7 @@ export function ProjectSetup({ initialTab }: ProjectSetupProps) {
       activeTab="GANTT"
       accent="#bdb2f4"
       calendarContent={<ProjectCalendarView />}
+      hideToolbar
       icon={faChartGantt}
       initialTab={initialTab}
       jobsContent={<ProjectPeopleJobsView />}
