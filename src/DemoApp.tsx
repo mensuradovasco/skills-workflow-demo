@@ -72,6 +72,7 @@ const stepDurations: Record<DemoStep, number> = {
   execution: 4200,
   proofing: 4200,
   profitability: 5600,
+  billing: 5600,
 };
 
 type WorkspaceView =
@@ -925,6 +926,7 @@ function crumbLabel(step: DemoStep): string {
     execution: "Coca-Cola - Summer Assets",
     proofing: "3D Billboard – Create 3D asset",
     profitability: "Coca-Cola - Summer Assets",
+    billing: "Profitability",
   };
   return labels[step] ?? stageTitleShort(step);
 }
@@ -941,6 +943,7 @@ function stageTitle(step: DemoStep) {
     execution: "Work moves forward with time captured.",
     proofing: "Creative review stays inside the workflow.",
     profitability: "Budget tracking stays connected to delivery.",
+    billing: "Billing rolls up into agency-wide profitability.",
   };
   return titles[step];
 }
@@ -967,6 +970,8 @@ function stageDescription(step: DemoStep) {
       "Asset review feels connected to delivery, not like a separate client feedback island.",
     profitability:
       "The close lands on the business outcome: approved budget, planned work, billing, and delivery readiness.",
+    billing:
+      "Billing remaining, margin, forecast, and profitability roll up across the agency.",
   };
   return descriptions[step];
 }
