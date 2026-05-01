@@ -6,8 +6,8 @@ import {
   faListCheck,
   faPeopleArrows,
 } from "@fortawesome/free-solid-svg-icons";
-import type { CSSProperties } from "react";
-import { ListTable } from "./DocumentFrame";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { ListTable, type ListColumn } from "./DocumentFrame";
 import { WorkspaceFrame } from "./WorkspaceFrame";
 import { campaign } from "../../data/cocaColaCampaign";
 
@@ -126,12 +126,40 @@ export function ResourcesWorkspace() {
 }
 
 export function AgencyProfitabilityWorkspace() {
+  const [rows, setRows] = useState<ProfitRow[]>(initialProfitRows);
+
+  useEffect(() => {
+    let timer: number;
+    const billNext = () => {
+      setRows((current) => {
+        const billableIndex = current.findIndex((row) => row.stage === "To be billed");
+        if (billableIndex === -1) return current;
+        return current.map((row, index) => {
+          if (index !== billableIndex) return row;
+          return {
+            ...row,
+            stage: "Billed",
+            billed: row.income,
+            toBill: 0,
+            billedPct: 100,
+            flashKey: (row.flashKey ?? 0) + 1,
+          };
+        });
+      });
+      timer = window.setTimeout(billNext, 900);
+    };
+    timer = window.setTimeout(billNext, 350);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  const groups = useMemo(() => [{ label: "", rows }], [rows]);
+
   return (
     <WorkspaceFrame
       accent="#57c69a"
       icon={faChartPie}
       subtitle="All"
-      tabs={["AGENCY", "CLIENTS", "PROJECTS", "FORECAST"]}
+      tabs={[]}
       title="Profitability"
     >
       <div className="workspace-profitability">
@@ -140,8 +168,8 @@ export function AgencyProfitabilityWorkspace() {
           <article><small>Revenue forecast</small><strong>€1.42m</strong></article>
           <article><small>Billing remaining</small><strong>€312k</strong></article>
         </div>
-        <WorkspaceListWithAnalytics compact charts={profitAnalytics} filterLabel="Period" />
-        <ListTable groups={profitabilityGroups} />
+        <WorkspaceListWithAnalytics charts={profitAnalytics} filterLabel="Period" hideQuickFilters />
+        <ListTable columns={profitColumns} groups={groups} />
       </div>
     </WorkspaceFrame>
   );
@@ -153,33 +181,45 @@ type WorkspaceAnalytics = Array<{
   labels?: string[];
   title: string;
   values?: number[];
+  yAxis?: string[];
 }>;
 
 function WorkspaceListWithAnalytics({
   charts,
   compact = false,
   filterLabel,
+  hideQuickFilters = false,
 }: {
   charts: WorkspaceAnalytics;
   compact?: boolean;
   filterLabel: string;
+  hideQuickFilters?: boolean;
 }) {
   return (
     <section className={compact ? "workspace-analytics compact" : "workspace-analytics"}>
-      <div className="workspace-filter-row">
-        <button className="active">Export</button>
-        <button>Client</button>
-        <button>No mail</button>
-        <label>
-          <span>{filterLabel}</span>
-          <input placeholder="All" />
-        </label>
-      </div>
+      {!hideQuickFilters && (
+        <div className="workspace-filter-row">
+          <button className="active">Export</button>
+          <button>Client</button>
+          <button>No mail</button>
+          <label>
+            <span>{filterLabel}</span>
+            <input placeholder="All" />
+          </label>
+        </div>
+      )}
       <div className="workspace-chart-row">
-        {charts.map(({ bars, images, labels, title, values }) => (
+        {charts.map(({ bars, images, labels, title, values, yAxis }) => (
           <article className="workspace-chart-card" key={title}>
             <header>{title}</header>
             <div className="mini-bar-chart">
+              {yAxis && (
+                <ul className="mini-bar-yaxis" aria-hidden="true">
+                  {yAxis.map((label) => (
+                    <li key={label} data-label={label} />
+                  ))}
+                </ul>
+              )}
               {bars.map((height, index) => (
                 <div className="mini-bar-item" key={`${title}-${index}`}>
                   <span
@@ -277,9 +317,28 @@ const resourceAnalytics: WorkspaceAnalytics = [
 ];
 
 const profitAnalytics: WorkspaceAnalytics = [
-  { title: "Margin by client", bars: [74, 66, 42, 31, 22] },
-  { title: "Revenue by department", bars: [88, 72, 54, 39, 28] },
-  { title: "Forecast by month", bars: [38, 46, 59, 72, 84, 91] },
+  {
+    title: "Margin by client",
+    bars: [85, 69, 53, 40],
+    images: [clientAssets.cocaCola, clientAssets.samsung, clientAssets.loreal, clientAssets.hp],
+    labels: ["Coca-Cola", "Samsung", "L'Oreal", "HP"],
+    values: [38, 31, 24, 18],
+    yAxis: ["45%", "30%", "15%", "0%"],
+  },
+  {
+    title: "Revenue by department",
+    bars: [93, 69, 55, 36],
+    labels: ["Creative", "Design", "Video", "Strategy"],
+    values: [420, 312, 248, 164],
+    yAxis: ["€450k", "€300k", "€150k", "€0"],
+  },
+  {
+    title: "Forecast by month",
+    bars: [40, 53, 69, 80],
+    labels: ["Apr", "May", "Jun", "Jul"],
+    values: [180, 240, 310, 360],
+    yAxis: ["€450k", "€300k", "€150k", "€0"],
+  },
 ];
 
 const agencyJobGroups = [
@@ -361,16 +420,164 @@ const resourceGroups = [
   },
 ];
 
-const profitabilityGroups = [
+type ProfitStage = "New" | "To be billed" | "Billed";
+type ProfitCurrency = "USD" | "BRL" | "EUR";
+
+type ProfitRow = {
+  id: string;
+  client: string;
+  clientLogo: string;
+  project: string;
+  responsibleName: string;
+  responsibleAvatar: string;
+  stage: ProfitStage;
+  currency: ProfitCurrency;
+  income: number;
+  cost: number;
+  marginPct: number;
+  billedPct: number;
+  billed: number;
+  toBill: number;
+  flashKey?: number;
+};
+
+const stageTone: Record<ProfitStage, string> = {
+  "New": "blue",
+  "To be billed": "amber",
+  "Billed": "green",
+};
+
+const formatMoney = (value: number) => Math.round(value).toLocaleString("en-US");
+const formatPct = (value: number) => `${Math.round(value)}%`;
+
+const marginTone = (value: number) => (value >= 30 ? "green" : value >= 15 ? "amber" : "red");
+const billedTone = (value: number) => (value >= 60 ? "green" : value >= 25 ? "amber" : "red");
+
+function TweenNumber({ value, format, duration = 720 }: { value: number; format: (n: number) => string; duration?: number }) {
+  const [display, setDisplay] = useState(value);
+  const fromRef = useRef(value);
+  const elRef = useRef<HTMLSpanElement>(null);
+
+  useEffect(() => {
+    if (value === fromRef.current) return;
+    const start = performance.now();
+    const from = fromRef.current;
+    let raf = 0;
+    const tick = (now: number) => {
+      const elapsed = now - start;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setDisplay(from + (value - from) * eased);
+      if (progress < 1) raf = window.requestAnimationFrame(tick);
+      else fromRef.current = value;
+    };
+    raf = window.requestAnimationFrame(tick);
+
+    const el = elRef.current;
+    if (el) {
+      el.classList.remove("tween-flash");
+      void el.offsetWidth;
+      el.classList.add("tween-flash");
+    }
+
+    return () => window.cancelAnimationFrame(raf);
+  }, [value, duration]);
+
+  return <span ref={elRef} className="tween-cell">{format(display)}</span>;
+}
+
+const profitColumns: ListColumn<ProfitRow>[] = [
   {
-    label: "Client profitability",
-    tone: "green",
-    rows: [
-      { title: "Coca-Cola", image: clientAssets.cocaCola, type: "Client", company: "Coca-Cola", department: "Client Services", classification: "On plan", date: "€15,000", priority: "Low" as const },
-      { title: "Samsung", image: clientAssets.samsung, type: "Client", company: "Samsung", department: "Production", classification: "34% margin", date: "€122.4k", priority: "Medium" as const },
-      { title: "L'Oreal", image: clientAssets.loreal, type: "Client", company: "L'Oreal", department: "Strategy", classification: "29% margin", date: "€42.5k", priority: "High" as const },
-    ],
+    key: "client",
+    label: "Client",
+    cellClassName: "doc-title-cell",
+    width: "minmax(110px, 0.8fr)",
+    render: (row) => (
+      <>
+        <img src={row.clientLogo} alt="" />
+        <strong>{row.client}</strong>
+      </>
+    ),
   },
+  { key: "project", label: "Project", width: "minmax(150px, 1.1fr)", render: (row) => row.project },
+  {
+    key: "responsible",
+    label: "Responsible",
+    width: "minmax(140px, 0.85fr)",
+    cellClassName: "responsible-cell",
+    render: (row) => (
+      <>
+        <img src={row.responsibleAvatar} alt="" />
+        <span>{row.responsibleName}</span>
+      </>
+    ),
+  },
+  {
+    key: "stage",
+    label: "Stage",
+    width: "minmax(110px, 0.6fr)",
+    render: (row) => (
+      <span className={`stage-tag tone-${stageTone[row.stage]}`}>
+        <i />
+        {row.stage}
+      </span>
+    ),
+  },
+  {
+    key: "currency",
+    label: "Currency",
+    width: "minmax(64px, 0.36fr)",
+    render: (row) => <span className="currency-tag">{row.currency}</span>,
+  },
+  { key: "income", label: "Income", align: "right", width: "minmax(82px, 0.5fr)", render: (row) => formatMoney(row.income) },
+  { key: "cost", label: "Cost", align: "right", width: "minmax(74px, 0.45fr)", render: (row) => formatMoney(row.cost) },
+  {
+    key: "margin",
+    label: "Margin %",
+    align: "right",
+    width: "minmax(78px, 0.45fr)",
+    render: (row) => <span className={`pct tone-${marginTone(row.marginPct)}`}>{row.marginPct}%</span>,
+  },
+  {
+    key: "billedPct",
+    label: "Billed %",
+    align: "right",
+    width: "minmax(78px, 0.45fr)",
+    render: (row) => (
+      <span className={`pct tone-${billedTone(row.billedPct)}`}>
+        <TweenNumber value={row.billedPct} format={formatPct} />
+      </span>
+    ),
+  },
+  {
+    key: "billed",
+    label: "Billed",
+    align: "right",
+    width: "minmax(82px, 0.5fr)",
+    render: (row) => <TweenNumber value={row.billed} format={formatMoney} />,
+  },
+  {
+    key: "toBill",
+    label: "To bill",
+    align: "right",
+    width: "minmax(86px, 0.55fr)",
+    render: (row) => <TweenNumber value={row.toBill} format={formatMoney} />,
+  },
+];
+
+const team = campaign.team;
+
+const initialProfitRows: ProfitRow[] = [
+  { id: "cc-summer", client: "Coca-Cola", clientLogo: clientAssets.cocaCola, project: "Summer Campaign", responsibleName: team[0].name, responsibleAvatar: team[0].avatar, stage: "To be billed", currency: "USD", income: 391341, cost: 344381, marginPct: 12, billedPct: 51, billed: 200000, toBill: 191341 },
+  { id: "loreal-launch", client: "L'Oreal", clientLogo: clientAssets.loreal, project: "New Launch", responsibleName: team[3].name, responsibleAvatar: team[3].avatar, stage: "New", currency: "EUR", income: 276200, cost: 69050, marginPct: 75, billedPct: 54, billed: 150000, toBill: 126200 },
+  { id: "hp-3d", client: "HP", clientLogo: clientAssets.hp, project: "3D Production", responsibleName: team[1].name, responsibleAvatar: team[1].avatar, stage: "Billed", currency: "USD", income: 261000, cost: 146160, marginPct: 44, billedPct: 100, billed: 261000, toBill: 0 },
+  { id: "samsung-digital", client: "Samsung", clientLogo: clientAssets.samsung, project: "Digital Creative", responsibleName: team[2].name, responsibleAvatar: team[2].avatar, stage: "To be billed", currency: "BRL", income: 21256, cost: 15517, marginPct: 27, billedPct: 37, billed: 8000, toBill: 13256 },
+  { id: "samsung-billboard", client: "Samsung", clientLogo: clientAssets.samsung, project: "Billboard Production", responsibleName: team[1].name, responsibleAvatar: team[1].avatar, stage: "To be billed", currency: "BRL", income: 20047, cost: 9624, marginPct: 4, billedPct: 24, billed: 5000, toBill: 15047 },
+  { id: "nike-retail", client: "Nike", clientLogo: clientAssets.nike, project: "Retail Activation", responsibleName: team[4].name, responsibleAvatar: team[4].avatar, stage: "New", currency: "USD", income: 38200, cost: 12500, marginPct: 67, billedPct: 0, billed: 0, toBill: 38200 },
+  { id: "cc-spring", client: "Coca-Cola", clientLogo: clientAssets.cocaCola, project: "Spring Promo", responsibleName: team[3].name, responsibleAvatar: team[3].avatar, stage: "To be billed", currency: "USD", income: 84500, cost: 51200, marginPct: 39, billedPct: 25, billed: 21125, toBill: 63375 },
+  { id: "loreal-q3", client: "L'Oreal", clientLogo: clientAssets.loreal, project: "Q3 Digital", responsibleName: team[2].name, responsibleAvatar: team[2].avatar, stage: "New", currency: "EUR", income: 58000, cost: 32400, marginPct: 44, billedPct: 0, billed: 0, toBill: 58000 },
+  { id: "hp-spring", client: "HP", clientLogo: clientAssets.hp, project: "Spring Launch", responsibleName: team[0].name, responsibleAvatar: team[0].avatar, stage: "To be billed", currency: "BRL", income: 72500, cost: 39200, marginPct: 46, billedPct: 12, billed: 8700, toBill: 63800 },
+  { id: "nike-holiday", client: "Nike", clientLogo: clientAssets.nike, project: "Holiday Edit", responsibleName: team[1].name, responsibleAvatar: team[1].avatar, stage: "Billed", currency: "USD", income: 31400, cost: 18900, marginPct: 40, billedPct: 100, billed: 31400, toBill: 0 },
 ];
 
 const taskGroups = [

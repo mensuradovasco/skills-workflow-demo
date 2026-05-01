@@ -19,7 +19,7 @@ import {
   faUserGroup,
 } from "@fortawesome/free-solid-svg-icons";
 import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
-import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactElement, type ReactNode } from "react";
 import { campaign, projectTimelineRows, projectWorkItems } from "../../data/cocaColaCampaign";
 
 type DocumentFrameProps = {
@@ -36,12 +36,16 @@ type DocumentFrameProps = {
   feedStageLabel?: string;
   feedStageTimestamp?: string;
   feedReviewAnimation?: boolean;
+  feedDateRange?: { start: string; end: string };
+  feedTags?: string[];
+  feedTaskAnimating?: boolean;
   feedTeamAnimated?: boolean;
   onFeedStageAction?: () => void;
   hideToolbar?: boolean;
   icon?: IconDefinition;
   initialTab?: string;
   jobsContent?: ReactNode;
+  resourceUtilizationContent?: ReactNode;
   tabAnchors?: Record<string, string>;
   tabs?: string[];
   title?: string;
@@ -63,22 +67,31 @@ export function DocumentFrame({
   feedStageLabel,
   feedStageTimestamp,
   feedReviewAnimation,
+  feedDateRange,
+  feedTags,
+  feedTaskAnimating,
   feedTeamAnimated,
   hideToolbar = false,
   icon = faFileLines,
   initialTab,
   jobsContent,
   onFeedStageAction,
+  resourceUtilizationContent,
   tabAnchors,
   tabs = defaultTabs,
   title = campaign.campaign,
 }: DocumentFrameProps) {
   const [selectedTab, setSelectedTab] = useState(initialTab ?? activeTab);
+  const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const style = { "--doc-accent": accent } as CSSProperties;
 
   useEffect(() => {
     setSelectedTab(initialTab ?? activeTab);
   }, [activeTab, initialTab]);
+
+  useEffect(() => {
+    tabRefs.current[selectedTab]?.scrollIntoView({ block: "nearest", inline: "center" });
+  }, [selectedTab]);
 
   return (
     <section className="document-frame" style={style}>
@@ -92,7 +105,7 @@ export function DocumentFrame({
             <div>
               <strong>{title}</strong>
               <small>
-                {campaign.organization} <span>/</span> Projects <span>/</span> {campaign.campaign}
+                {campaign.client} <span>/</span> {campaign.campaign}
               </small>
             </div>
           </div>
@@ -109,6 +122,9 @@ export function DocumentFrame({
               data-tour-anchor={tabAnchors?.[tab]}
               key={tab}
               onClick={() => setSelectedTab(tab)}
+              ref={(element) => {
+                tabRefs.current[tab] = element;
+              }}
             >
               {tab}
             </button>
@@ -139,9 +155,13 @@ export function DocumentFrame({
           feedStageLabel,
           feedStageTimestamp,
           feedReviewAnimation,
+          feedDateRange,
+          feedTags,
+          feedTaskAnimating,
           feedTeamAnimated,
           jobsContent,
           onFeedStageAction,
+          resourceUtilizationContent,
         })}
       </div>
     </section>
@@ -163,14 +183,22 @@ function renderTabContent(
     feedStageLabel?: string;
     feedStageTimestamp?: string;
     feedReviewAnimation?: boolean;
+    feedDateRange?: { start: string; end: string };
+    feedTags?: string[];
+    feedTaskAnimating?: boolean;
     feedTeamAnimated?: boolean;
     jobsContent?: ReactNode;
     onFeedStageAction?: () => void;
+    resourceUtilizationContent?: ReactNode;
   },
 ) {
   if (selectedTab === "FEED") return <FeedDocumentView {...feedState} />;
 
   if (selectedTab === activeTab) return children;
+
+  if (selectedTab === "RESOURCE UTILIZATION") {
+    return feedState?.resourceUtilizationContent ?? <InfoListView tab={selectedTab} />;
+  }
 
   if (["JOBS", "KANBAN BY PERSON", "TASKS", "WORKFLOW", "ESTIMATES"].includes(selectedTab)) {
     return feedState?.jobsContent ?? <JobsListView />;
@@ -205,6 +233,9 @@ export function FeedDocumentView({
   feedStageLabel,
   feedStageTimestamp = "04 Jun 2026, 13:31",
   feedReviewAnimation = false,
+  feedDateRange,
+  feedTags,
+  feedTaskAnimating = false,
   feedTeamAnimated = false,
   onFeedStageAction,
 }: {
@@ -217,6 +248,9 @@ export function FeedDocumentView({
   feedStageLabel?: string;
   feedStageTimestamp?: string;
   feedReviewAnimation?: boolean;
+  feedDateRange?: { start: string; end: string };
+  feedTags?: string[];
+  feedTaskAnimating?: boolean;
   feedTeamAnimated?: boolean;
   onFeedStageAction?: () => void;
 }) {
@@ -263,7 +297,7 @@ export function FeedDocumentView({
   }, []);
 
   return (
-    <div className="document-feed">
+    <div className={`document-feed${feedTaskAnimating ? " feed-task-animating" : ""}`}>
       <main className="feed-main">
         <section className="feed-description">
           <header>
@@ -397,29 +431,26 @@ export function FeedDocumentView({
       </main>
 
       <aside className="feed-side-panel">
-        <section className="feed-stage-card">
-          <header>
-            <img className="avatar photo" src={requester.avatar} alt="" />
-            <small>{feedStageTimestamp}</small>
-          </header>
-          <div>
-            <strong>Stage</strong>
-            <span><i /> {stageLabel}</span>
-            <button
-              className="feed-stage-action"
-              data-tour-anchor={feedStageActionAnchor}
-              onClick={onFeedStageAction}
-              type="button"
-            >
-              {stageActionLabel}
-            </button>
-          </div>
-        </section>
+        <FeedStageCard
+          actionAnchor={feedStageActionAnchor}
+          actionLabel={stageActionLabel}
+          dateRange={feedDateRange}
+          defaultDate={feedStageTimestamp}
+          onAction={onFeedStageAction}
+          stageLabel={stageLabel}
+        />
 
         <section className="feed-meta-card compact">
           <header>
             <FontAwesomeIcon icon={faTag} />
             <strong>Tags</strong>
+            {feedTags && feedTags.length > 0 && (
+              <span className="feed-tag-list">
+                {feedTags.map((tag, index) => (
+                  <span className="tag-pill" data-tone={tagTone(index)} key={tag}>{tag}</span>
+                ))}
+              </span>
+            )}
             <button><FontAwesomeIcon icon={faPlus} /></button>
           </header>
         </section>
@@ -437,6 +468,68 @@ export function FeedDocumentView({
       </aside>
     </div>
   );
+}
+
+export function FeedStageCard({
+  actionAnchor,
+  actionLabel,
+  className,
+  dateRange,
+  defaultDate = "04 Jun 2026, 13:31",
+  onAction,
+  stageLabel,
+  stageState,
+}: {
+  actionAnchor?: string;
+  actionLabel: string;
+  className?: string;
+  dateRange?: { start: string; end: string };
+  defaultDate?: string;
+  onAction?: () => void;
+  stageLabel: string;
+  stageState?: string;
+}) {
+  const stageDateRange = dateRange ?? {
+    start: defaultDate.split(",")[0],
+    end: campaign.request.dueDate,
+  };
+
+  return (
+    <section className={["feed-stage-card", className].filter(Boolean).join(" ")}>
+      <header>
+        <div className="feed-stage-header-dates">
+          <div>
+            <small>Start</small>
+            <strong>{stageDateRange.start}</strong>
+          </div>
+          <div>
+            <small>End</small>
+            <strong>{stageDateRange.end}</strong>
+          </div>
+        </div>
+      </header>
+      <div className="feed-stage-status">
+        <strong>Stage</strong>
+        <span><i /> {stageLabel}</span>
+        {actionLabel && (
+          <button
+            className="feed-stage-action"
+            data-tour-anchor={actionAnchor}
+            data-stage-state={stageState}
+            onClick={onAction}
+            type="button"
+          >
+            {actionLabel}
+          </button>
+        )}
+      </div>
+    </section>
+  );
+}
+
+export function tagTone(index: number) {
+  const tones = ["red", "amber", "green", "blue", "purple"];
+  return tones[index % tones.length];
 }
 
 function FeedTeamRow({ animated = false, client, label, people, prefix }: { animated?: boolean; client?: boolean; label: string; people: typeof campaign.team; prefix?: string }) {
@@ -711,42 +804,76 @@ type ListRow = {
   type?: string;
 };
 
-type ListTableProps = {
-  groups: Array<{ label: string; rows: ListRow[]; tone?: string }>;
+export type ListColumn<T> = {
+  align?: "right";
+  cellClassName?: string;
+  key: string;
+  label: string;
+  render: (row: T) => ReactNode;
+  width?: string;
 };
 
-export function ListTable({ groups }: ListTableProps) {
+type ListGroup<T> = { label: string; rows: T[]; tone?: string };
+
+type ListTableProps<T> = {
+  columns?: ListColumn<T>[];
+  groups: Array<ListGroup<T>>;
+};
+
+const defaultListColumns: ListColumn<ListRow>[] = [
+  {
+    key: "title",
+    label: "Title",
+    cellClassName: "doc-title-cell",
+    width: "minmax(220px, 1.65fr)",
+    render: (row) => (
+      <>
+        {row.image && <img src={row.image} alt="" />}
+        <strong>{row.title}</strong>
+      </>
+    ),
+  },
+  { key: "type", label: "Type", width: "minmax(92px, 0.72fr)", render: (row) => row.type ?? "Task" },
+  { key: "company", label: "Company", width: "minmax(120px, 0.78fr)", render: (row) => row.company ?? "Company 1" },
+  { key: "division", label: "Division", width: "minmax(86px, 0.62fr)", render: (row) => row.division ?? "Brazil" },
+  { key: "department", label: "Department", width: "minmax(128px, 0.9fr)", render: (row) => row.department ?? "Client Services" },
+  { key: "classification", label: "Classification", width: "minmax(142px, 1fr)", render: (row) => row.classification ?? row.owner ?? campaign.campaign },
+  { key: "date", label: "Due date", width: "minmax(122px, 0.76fr)", render: (row) => <mark>{row.date ?? "05 May 2026 00"}</mark> },
+  { key: "priority", label: "Priority", width: "minmax(110px, 0.7fr)", render: (row) => <b className={`priority ${row.priority ?? "Medium"}`}>{row.priority ?? "Medium"}</b> },
+];
+
+export function ListTable(props: { groups: Array<ListGroup<ListRow>> }): ReactElement;
+export function ListTable<T>(props: { columns: ListColumn<T>[]; groups: Array<ListGroup<T>> }): ReactElement;
+export function ListTable<T = ListRow>({ columns, groups }: ListTableProps<T>) {
+  const cols = (columns ?? (defaultListColumns as unknown as ListColumn<T>[]));
+  const gridTemplate = cols.map((c) => c.width ?? "minmax(0, 1fr)").join(" ");
+  const rowStyle = { "--doc-grid-columns": gridTemplate } as CSSProperties;
+
   return (
     <div className="document-table">
-      <div className="doc-row doc-head">
-        <span>Title</span>
-        <span>Type</span>
-        <span>Company</span>
-        <span>Division</span>
-        <span>Department</span>
-        <span>Classification</span>
-        <span>Due date</span>
-        <span>Priority</span>
+      <div className="doc-row doc-head" style={rowStyle}>
+        {cols.map((c) => (
+          <span key={c.key} className={c.align === "right" ? "num" : undefined}>{c.label}</span>
+        ))}
       </div>
       {groups.map((group) => (
         <div className="doc-group" key={group.label}>
-          <div className={`doc-group-label ${group.tone ?? ""}`}>
-            <span />
-            {group.label}
-          </div>
-          {group.rows.map((row) => (
-            <div className="doc-row" key={`${group.label}-${row.title}`}>
-              <span className="doc-title-cell">
-                {row.image && <img src={row.image} alt="" />}
-                <strong>{row.title}</strong>
-              </span>
-              <span>{row.type ?? "Task"}</span>
-              <span>{row.company ?? "Company 1"}</span>
-              <span>{row.division ?? "Brazil"}</span>
-              <span>{row.department ?? "Client Services"}</span>
-              <span>{row.classification ?? row.owner ?? campaign.campaign}</span>
-              <span><mark>{row.date ?? "05 May 2026 00"}</mark></span>
-              <span><b className={`priority ${row.priority ?? "Medium"}`}>{row.priority ?? "Medium"}</b></span>
+          {group.label && (
+            <div className={`doc-group-label ${group.tone ?? ""}`}>
+              <span />
+              {group.label}
+            </div>
+          )}
+          {group.rows.map((row, rowIndex) => (
+            <div className="doc-row" key={`${group.label}-${rowIndex}`} style={rowStyle}>
+              {cols.map((c) => (
+                <span
+                  key={c.key}
+                  className={[c.cellClassName, c.align === "right" ? "num" : ""].filter(Boolean).join(" ") || undefined}
+                >
+                  {c.render(row)}
+                </span>
+              ))}
             </div>
           ))}
         </div>

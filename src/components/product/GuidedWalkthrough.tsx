@@ -251,17 +251,18 @@ export function GuidedWalkthrough({
 
   const spotlightStyle = targetRect
     ? {
-        height: targetRect.height + 8,
-        left: targetRect.left - 4,
-        top: targetRect.top - 4,
-        width: targetRect.width + 8,
+        height: targetRect.height + 16,
+        left: targetRect.left - 8,
+        top: targetRect.top - 8,
+        width: targetRect.width + 16,
       }
     : {};
 
+  const showSpotlight = currentStep.spotlight !== false;
   const overlay = (
     <div className="guided-demo-layer" aria-live="polite">
-      <div className="guided-demo-dim" />
-      {targetRect && (
+      {showSpotlight && <div className="guided-demo-dim" />}
+      {showSpotlight && targetRect && (
         <button
           aria-label={`Continue guided demo: ${currentStep.title}`}
           className="guided-demo-spotlight"

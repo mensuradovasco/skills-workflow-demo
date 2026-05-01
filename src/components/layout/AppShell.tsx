@@ -16,9 +16,9 @@ const visibleStageIds: DemoStep[] = [
   "budget",
   "project",
   "resources",
-  "execution",
   "proofing",
   "profitability",
+  "billing",
 ];
 
 const stages = visibleStageIds
@@ -64,7 +64,13 @@ export function AppShell({ activeStep, children, guidedActive, onStepChange }: A
       </nav>
       <main>
         <h1 className="marketing-hero-title">
-          World's first <em>briefing to billing</em> solution
+          World's first <em>briefing to billing</em> solution for{" "}
+          <span className="rotating-words" aria-label="Advertising, Marketing, Media, Creative">
+            <span>Advertising</span>
+            <span>Marketing</span>
+            <span>Media</span>
+            <span>Creative</span>
+          </span>
         </h1>
         {children}
         <div className="stage-chips" aria-label="Demo flow progress">

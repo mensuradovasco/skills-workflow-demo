@@ -3,23 +3,38 @@ import { createPortal } from "react-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faArrowsRotate,
+  faBookmark,
   faCalendarDays,
   faChevronLeft,
   faChevronRight,
+  faCircleCheck,
+  faCircleInfo,
+  faCircleXmark,
+  faDownload,
   faEllipsis,
+  faExpand,
   faFilter,
   faFileImage,
+  faFolder,
   faGripVertical,
   faListCheck,
   faMagnifyingGlass,
+  faPen,
   faPeopleArrows,
   faTableCells,
+  faTag,
   faXmark,
 } from "@fortawesome/free-solid-svg-icons";
 import { campaign, projectWorkItems, resourceBookings } from "../../data/cocaColaCampaign";
-import { FeedDocumentView } from "./DocumentFrame";
+import { FeedDocumentView, tagTone } from "./DocumentFrame";
 import { ProofingContent } from "./ExecutionProofing";
 import { WorkspaceFrame } from "./WorkspaceFrame";
+
+const BILLBOARD_IMAGE = "https://images.unsplash.com/photo-1554866585-cd94860890b7?auto=format&fit=crop&w=900&q=80";
+const BILLBOARD_TAGS = ["3D", "billboard", "Coca-Cola"];
+const FINAL_PROOF_COMMENT_MS = 1500;
+const APPROVE_AT_MS = 1500;
+const CLOSE_PREVIEW_AT_MS = 2700;
 
 type BacklogItem = {
   color: string;
@@ -112,10 +127,20 @@ function getInitialAssignments(): ScheduledItem[] {
   }));
 }
 
-export function ResourcePlanner() {
+type ResourcePlannerProps = {
+  onProjectNavigate?: () => void;
+};
+
+export function ResourcePlanner({ onProjectNavigate }: ResourcePlannerProps) {
   const [openJob, setOpenJob] = useState<string | null>(null);
   const [autoApproveProof, setAutoApproveProof] = useState(false);
-  const [modalTab, setModalTab] = useState<"FEED" | "PROOFING">("PROOFING");
+  const [modalTab, setModalTab] = useState<"FEED" | "PROOFING">("FEED");
+  const [annotationOpen, setAnnotationOpen] = useState(false);
+  const [annotationClosing, setAnnotationClosing] = useState(false);
+  const [annotationStage, setAnnotationStage] = useState<"review" | "billing">("review");
+  const [proofAnimationPhase, setProofAnimationPhase] = useState<"preview" | "comments">("preview");
+  const [taskAnimating, setTaskAnimating] = useState(false);
+  const [thumbnailClicking, setThumbnailClicking] = useState(false);
   const [backlog, setBacklog] = useState(getInitialBacklog);
   const [assignments, setAssignments] = useState<ScheduledItem[]>(getInitialAssignments);
   const [resizeInteraction, setResizeInteraction] = useState<ResizeInteraction | null>(null);
@@ -190,6 +215,36 @@ export function ResourcePlanner() {
     setDraggingJob(null);
     setBacklog(getInitialBacklog());
     setAssignments(getInitialAssignments());
+  };
+
+  const closeAnnotationAnimated = () => {
+    setAnnotationClosing(true);
+    const unmountTimer = window.setTimeout(() => {
+      setAnnotationOpen(false);
+      setAnnotationClosing(false);
+    }, 360);
+    automationTimers.current.push(unmountTimer);
+  };
+
+  const stopResourceAnimation = () => {
+    clearAutomationTimers();
+    setResourceSearchPhase("idle");
+    setResourceSearchText("");
+    setResourceResultsVisible(false);
+    setDraggingJob(null);
+    setTaskAnimating(false);
+    setProofAnimationPhase("preview");
+    setThumbnailClicking(false);
+    setAnnotationClosing(false);
+  };
+
+  const runGuidedThumbnailOpen = () => {
+    // Play just the thumbnail click visual; the annotation modal opens in
+    // the next guided step so the first comment appears right after the click,
+    // matching the manual thumbnail click timing.
+    const clickTimer = window.setTimeout(() => setThumbnailClicking(true), 520);
+    const releaseTimer = window.setTimeout(() => setThumbnailClicking(false), 1000);
+    automationTimers.current.push(clickTimer, releaseTimer);
   };
 
   const runSearchAutomation = () => {
@@ -290,27 +345,73 @@ export function ResourcePlanner() {
     const handleGuidedStep = (event: Event) => {
       const stepId = (event as CustomEvent<{ id?: string }>).detail?.id;
       if (stepId === "resource-open-job") {
+        stopResourceAnimation();
         setOpenJob(null);
         setModalTab("FEED");
+        setAnnotationOpen(false);
+        setAnnotationStage("review");
+        setTaskAnimating(false);
+        setThumbnailClicking(false);
         setAutoApproveProof(false);
         return;
       }
 
-      if (stepId === "resource-job-proofing-tab") {
+      if (stepId === "client-side-review") {
+        stopResourceAnimation();
         setOpenJob("Create 3D asset");
         setModalTab("FEED");
+        setAnnotationOpen(false);
+        setAnnotationStage("review");
+        setProofAnimationPhase("preview");
+        setTaskAnimating(false);
+        setThumbnailClicking(false);
         setAutoApproveProof(false);
+        runGuidedThumbnailOpen();
         return;
       }
 
-      if (stepId === "resource-proofing-track") {
+      if (stepId === "annotate-asset") {
+        stopResourceAnimation();
         setOpenJob("Create 3D asset");
-        setModalTab("PROOFING");
-        setAutoApproveProof(true);
+        setModalTab("FEED");
+        setAnnotationOpen(true);
+        setAnnotationStage("review");
+        // Reset to "preview" first so conditionally-rendered comments/pins
+        // unmount, then flip to "comments" on the next frame so they remount
+        // fresh and CSS animations replay from t=0.
+        setProofAnimationPhase("preview");
+        setTaskAnimating(false);
+        setThumbnailClicking(false);
+        const phaseTimer = window.setTimeout(() => {
+          setProofAnimationPhase("comments");
+          // Schedule the approve flip from the SAME moment the comments mount,
+          // so comment 2 / pin 2 / Client annotation / approve pulse all hit
+          // simultaneously instead of drifting due to React render delay.
+          const approveTimer = window.setTimeout(() => setAnnotationStage("billing"), APPROVE_AT_MS);
+          const closeTimer = window.setTimeout(closeAnnotationAnimated, CLOSE_PREVIEW_AT_MS);
+          automationTimers.current.push(approveTimer, closeTimer);
+        }, 16);
+        automationTimers.current.push(phaseTimer);
+        return;
+      }
+
+      if (stepId === "navigate-project") {
+        stopResourceAnimation();
+        setOpenJob("Create 3D asset");
+        setModalTab("FEED");
+        setAnnotationOpen(false);
+        setAnnotationStage("billing");
+        setProofAnimationPhase("preview");
+        setTaskAnimating(false);
+        setThumbnailClicking(false);
         return;
       }
 
       if (stepId === "resource-planning-view") {
+        setAnnotationOpen(false);
+        setAnnotationStage("review");
+        setTaskAnimating(false);
+        setThumbnailClicking(false);
         setOpenJob(null);
         runSearchAutomation();
         return;
@@ -321,11 +422,29 @@ export function ResourcePlanner() {
     return () => window.removeEventListener("guided-demo-step-active", handleGuidedStep);
   }, []);
 
+  const openAnnotationFromFeed = () => {
+    clearAutomationTimers();
+    setThumbnailClicking(false);
+    setAnnotationOpen(true);
+    setAnnotationStage("review");
+    // Same two-step phase shift as the guided demo so the inner elements
+    // mount fresh and the comments/pins/approval pulse stay in sync.
+    setProofAnimationPhase("preview");
+    const phaseTimer = window.setTimeout(() => {
+      setProofAnimationPhase("comments");
+      const approveTimer = window.setTimeout(() => setAnnotationStage("billing"), APPROVE_AT_MS);
+      const closeTimer = window.setTimeout(closeAnnotationAnimated, CLOSE_PREVIEW_AT_MS);
+      automationTimers.current.push(approveTimer, closeTimer);
+    }, 16);
+    automationTimers.current.push(phaseTimer);
+  };
+
   useEffect(() => () => clearAutomationTimers(), []);
 
   const openProofingJob = (item: ScheduledItem) => {
     if (item.title !== "Create 3D asset") return;
     setAutoApproveProof(false);
+    setTaskAnimating(true);
     setOpenJob(item.title);
   };
 
@@ -483,9 +602,13 @@ export function ResourcePlanner() {
               <div className="resource-job-title">
                 <span><FontAwesomeIcon icon={faListCheck} /></span>
                 <div>
-                  <strong>{openJob}</strong>
+                  <strong>{openJob === "Create 3D asset" ? "3D Billboard – Create 3D asset" : openJob}</strong>
                   <small>
-                    Skills Workflow <b>/</b> Coca-Cola - Summer Assets <b>/</b> Jobs <b>/</b> CC-JOB-003
+                    {campaign.client} <b>/</b>{" "}
+                    <button className="modal-project-breadcrumb" data-tour-anchor="modal-project-breadcrumb" onClick={onProjectNavigate} type="button">
+                      {campaign.campaign}
+                    </button>{" "}
+                    <b>/</b> Jobs <b>/</b> 3D Billboard <b>/</b> Create 3D asset
                   </small>
                 </div>
               </div>
@@ -512,22 +635,195 @@ export function ResourcePlanner() {
             <div className="resource-job-proofing" data-tour-anchor="resource-job-proofing">
               {modalTab === "FEED" ? (
                 <FeedDocumentView
-                  feedChecklist={["Brief reviewed", "Asset uploaded", "Hours logged"]}
-                  feedStageLabel="In progress"
-                  feedStageActionLabel="Move to proofing"
+                  feedHideChecklist
+                  feedStageLabel={annotationStage === "billing" ? "To be Billed" : "Under Client Review"}
+                  feedStageActionLabel={annotationStage === "billing" ? "" : "Awaiting approval"}
+                  feedStageActionAnchor="feed-stage-action"
                   feedStageTimestamp="04 Jun 2026, 14:22"
-                  feedTeamAnimated
-                  onFeedStageAction={() => setModalTab("PROOFING")}
+                  feedDateRange={{ start: "18 Jun 2026", end: "21 Jun 2026" }}
+                  feedTags={BILLBOARD_TAGS}
+                  feedTaskAnimating={taskAnimating}
+                  feedDescriptionContent={
+                    <div className="asset-approval-description">
+                      <p>3D digital billboard for the Coca-Cola Summer Assets campaign — animated render of the new summer can, optimised for large-format LED displays.</p>
+                      <p>
+                        <strong>Specs:</strong><br />
+                        1920×1080 + 3840×2160 (4K)<br />
+                        H.264 .mp4 + .png hero frame
+                      </p>
+                      <p>
+                        <strong>Delivery:</strong><br />
+                        21 Jun 2026 — Coca-Cola digital network
+                      </p>
+                      <div className="feed-documents">
+                        <button
+                          className={`feed-document-asset feed-document-button${thumbnailClicking ? " is-clicking" : ""}`}
+                          data-tour-anchor="asset-thumbnail-preview"
+                          onClick={openAnnotationFromFeed}
+                          type="button"
+                        >
+                          <img
+                            src={BILLBOARD_IMAGE.replace("w=900", "w=360")}
+                            alt="3D billboard render preview"
+                          />
+                          <div>
+                            <strong>3D Billboard render</strong>
+                            <small>Image</small>
+                          </div>
+                        </button>
+                        <article>
+                          <span><FontAwesomeIcon icon={faFileImage} /></span>
+                          <div>
+                            <strong>Creative Brief</strong>
+                            <small>Creative brief</small>
+                          </div>
+                        </article>
+                      </div>
+                    </div>
+                  }
+                  onFeedStageAction={openAnnotationFromFeed}
                 />
               ) : (
                 <ProofingContent autoApprove={autoApproveProof} />
               )}
             </div>
           </section>
+          {annotationOpen && (
+            <AnnotationPreview
+              closing={annotationClosing}
+              phase={proofAnimationPhase}
+              stage={annotationStage}
+              onClose={closeAnnotationAnimated}
+            />
+          )}
         </div>,
         document.querySelector(".product-window") ?? document.body,
       )}
     </WorkspaceFrame>
+  );
+}
+
+function AnnotationPreview({ closing, phase, stage, onClose }: { closing?: boolean; phase: "preview" | "comments"; stage: "review" | "billing"; onClose: () => void }) {
+  const isBilling = stage === "billing";
+  const annotations = [
+    { name: "Client", avatar: campaign.team[2].avatar, time: "04 Jun 2026, 14:25", text: "Approved for final delivery." },
+    { name: "Sofia Martins", avatar: campaign.team[0].avatar, time: "04 Jun 2026, 14:24", text: "Color and framing look good." },
+  ];
+  return (
+    <div
+      className={`annotation-preview-backdrop${closing ? " is-closing" : ""}`}
+      onMouseDown={(event) => {
+        event.stopPropagation();
+        onClose();
+      }}
+    >
+      <section
+        className={`annotation-preview${isBilling ? " is-approved" : ""}${phase === "comments" ? " is-commenting" : ""}${closing ? " is-closing" : ""}`}
+        data-tour-anchor="annotation-preview"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <header className="annotation-preview-header">
+          <div className="annotation-preview-title">
+            <span className="annotation-preview-icon"><FontAwesomeIcon icon={faFolder} /></span>
+            <strong>3D-Billboard-CocaCola_1000x540.jpg</strong>
+          </div>
+          <div className="annotation-preview-actions">
+            <button aria-label="Bookmark" type="button"><FontAwesomeIcon icon={faBookmark} /></button>
+            <button aria-label="Download" type="button"><FontAwesomeIcon icon={faDownload} /></button>
+            <button aria-label="Close annotation preview" onClick={onClose} type="button">
+              <FontAwesomeIcon icon={faXmark} />
+            </button>
+          </div>
+        </header>
+        <div className="annotation-preview-body">
+          <div className="annotation-image-wrap">
+            <button aria-label="Expand" className="annotation-image-expand" type="button">
+              <FontAwesomeIcon icon={faExpand} />
+            </button>
+            <img
+              src={BILLBOARD_IMAGE}
+              alt="3D billboard render preview"
+            />
+            {phase === "comments" && (
+              <>
+                <span className="proof-pin one">1</span>
+                <span className="proof-pin two">2</span>
+                <div className="proof-image-comment one">
+                  <strong>Sofia</strong>
+                  <span>Color and framing look good.</span>
+                </div>
+                <div className="proof-image-comment two">
+                  <strong>Client</strong>
+                  <span>Approved for final delivery.</span>
+                </div>
+              </>
+            )}
+          </div>
+          <aside className="annotation-preview-side">
+            <section className="annotation-section">
+              <header>
+                <FontAwesomeIcon icon={faEllipsis} />
+                <span>FILE APPROVAL</span>
+              </header>
+              <div className="annotation-approval">
+                <span className={`annotation-approval-pill approved${isBilling ? " is-active" : ""}`}>
+                  <FontAwesomeIcon icon={faCircleCheck} /> APPROVED
+                </span>
+                <span className={`annotation-approval-pill rejected${isBilling ? "" : " is-muted"}`}>
+                  <FontAwesomeIcon icon={faCircleXmark} /> REJECTED
+                </span>
+              </div>
+            </section>
+            <section className="annotation-section">
+              <header>
+                <FontAwesomeIcon icon={faTag} />
+                <span>TAGS</span>
+              </header>
+              <div className="annotation-tag-list">
+                {BILLBOARD_TAGS.map((tag, index) => (
+                  <span className="tag-pill" data-tone={tagTone(index)} key={tag}>{tag}</span>
+                ))}
+              </div>
+            </section>
+            <section className="annotation-section">
+              <header>
+                <FontAwesomeIcon icon={faPen} />
+                <span>ANNOTATIONS</span>
+              </header>
+              <div className="annotation-list">
+                {phase === "comments" && annotations.map((item) => (
+                  <article key={`${item.name}-${item.time}-${item.text}`}>
+                    <img className="avatar photo" src={item.avatar} alt="" />
+                    <div>
+                      <div className="annotation-list-row">
+                        <strong>{item.name}</strong>
+                        <small>{item.time}</small>
+                      </div>
+                      <p>{item.text}</p>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
+            <section className="annotation-section">
+              <header>
+                <FontAwesomeIcon icon={faCircleInfo} />
+                <span>INFO</span>
+              </header>
+              <dl className="annotation-info">
+                <div><dt>Name</dt><dd>3D-Billboard-CocaCola_1000x540.jpg</dd></div>
+                <div><dt>Version</dt><dd>1</dd></div>
+                <div><dt>Size</dt><dd>312.45 KB</dd></div>
+                <div><dt>Type</dt><dd>image</dd></div>
+                <div><dt>Extension</dt><dd>.jpg</dd></div>
+                <div><dt>Created On</dt><dd>04 Jun 2026, 14:22</dd></div>
+                <div><dt>Created By</dt><dd>Arthur</dd></div>
+              </dl>
+            </section>
+          </aside>
+        </div>
+      </section>
+    </div>
   );
 }
 

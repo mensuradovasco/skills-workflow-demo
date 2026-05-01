@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent } from "react";
 import { createPortal } from "react-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -7,7 +7,6 @@ import {
   faPaperclip,
   faPaperPlane,
   faPlus,
-  faUpRightAndDownLeftFromCenter,
   faWandMagicSparkles,
   faXmark,
 } from "@fortawesome/free-solid-svg-icons";
@@ -35,6 +34,11 @@ const COLLAPSED_KEY = "skills-workflow-guided-demo-collapsed";
 export const GUIDED_DEMO_VERSION = "budget-feed-workflow-v1";
 export const GUIDED_DEMO_STEP_KEY = STORAGE_KEY;
 export const GUIDED_DEMO_VERSION_KEY = VERSION_KEY;
+const DEFAULT_FRAME_OVERLAP = 0.35;
+const LAUNCHER_HEIGHT = 30;
+const LAUNCHER_GAP = 2;
+const LAUNCHER_FRAME_OFFSET = 12;
+const LAUNCHER_FALLBACK_WIDTH = 108;
 
 export function AIDock({
   active,
@@ -56,35 +60,74 @@ export function AIDock({
   const [isResizing, setIsResizing] = useState(false);
   const resizeStartRef = useRef({ x: 0, y: 0, w: 0, h: 0 });
   const [dockPos, setDockPos] = useState<{ right: number; bottom: number } | null>(null);
+  const [launcherBottom, setLauncherBottom] = useState(LAUNCHER_FRAME_OFFSET);
+  const [isDockDetached, setIsDockDetached] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const dragStartRef = useRef({ mouseX: 0, mouseY: 0, right: 0, bottom: 0 });
   const dockElRef = useRef<HTMLDivElement | null>(null);
+  const launcherElRef = useRef<HTMLButtonElement | null>(null);
+  const [launcherWidth, setLauncherWidth] = useState(LAUNCHER_FALLBACK_WIDTH);
 
-  // Default position: snap the chat to the launcher tab — right edge of the
-  // dock aligns with the right edge of the launcher pill, sitting just above
-  // it. Horizontal drag can move it left/right; vertical is always pinned.
   useEffect(() => {
-    if (dockPos) return;
-    const positionFromLauncher = () => {
-      const launcher = document.querySelector<HTMLElement>(".ai-dock-launcher");
-      const dock = dockElRef.current;
-      if (!launcher || !dock) return;
-      const lr = launcher.getBoundingClientRect();
-      const snappedRight = window.innerWidth - lr.right;
-      const desiredBottom = (window.innerHeight - lr.top) + 2;
-      const snappedBottom = Math.max(12, desiredBottom);
-      setDockPos({ right: snappedRight, bottom: snappedBottom });
+    const measureLauncher = () => {
+      const width = launcherElRef.current?.offsetWidth;
+      if (!width) return;
+      setLauncherWidth((prev) => (prev === width ? prev : width));
     };
-    positionFromLauncher();
-    window.addEventListener("resize", positionFromLauncher);
-    return () => window.removeEventListener("resize", positionFromLauncher);
-  }, [dockPos]);
+    measureLauncher();
+    window.addEventListener("resize", measureLauncher);
+    return () => window.removeEventListener("resize", measureLauncher);
+  }, []);
+
+  const getDockPositionFromFrame = useCallback(() => {
+    const frame = document.querySelector<HTMLElement>(".product-window");
+    if (!frame) return null;
+    const frameRect = frame.getBoundingClientRect();
+    const dockLeft = frameRect.right - (dockSize.width * DEFAULT_FRAME_OVERLAP);
+    const nextLauncherBottom = Math.max(LAUNCHER_FRAME_OFFSET, window.innerHeight - frameRect.bottom + LAUNCHER_FRAME_OFFSET);
+    return {
+      right: window.innerWidth - (dockLeft + dockSize.width),
+      bottom: nextLauncherBottom + LAUNCHER_HEIGHT + LAUNCHER_GAP,
+      launcherBottom: nextLauncherBottom,
+    };
+  }, [dockSize.width]);
+
+  // Default position: let the chat hang out of the product frame, leaving about
+  // a third inside the app. The launcher is then attached to the chat's lower
+  // left edge so it reads as the tab for this drawer.
+  useEffect(() => {
+    if (isDockDetached) return;
+    let raf = 0;
+
+    const snapToFrame = () => {
+      window.cancelAnimationFrame(raf);
+      raf = window.requestAnimationFrame(() => {
+        const next = getDockPositionFromFrame();
+        if (!next) return;
+        setLauncherBottom((prev) => (prev === next.launcherBottom ? prev : next.launcherBottom));
+        setDockPos((prev) => {
+          if (prev?.right === next.right && prev.bottom === next.bottom) return prev;
+          return next;
+        });
+      });
+    };
+
+    snapToFrame();
+    window.addEventListener("resize", snapToFrame);
+    window.addEventListener("scroll", snapToFrame, true);
+    return () => {
+      window.cancelAnimationFrame(raf);
+      window.removeEventListener("resize", snapToFrame);
+      window.removeEventListener("scroll", snapToFrame, true);
+    };
+  }, [getDockPositionFromFrame, isDockDetached]);
 
   const handleDragStart = useCallback((event: ReactMouseEvent<HTMLElement>) => {
     if (event.target instanceof HTMLElement && event.target.closest("button")) return;
     event.preventDefault();
     const rect = dockElRef.current?.getBoundingClientRect();
     if (!rect) return;
+    setIsDockDetached(true);
     dragStartRef.current = {
       mouseX: event.clientX,
       mouseY: event.clientY,
@@ -107,18 +150,18 @@ export function AIDock({
       newRight = Math.max(-(dockW - minVisible), Math.min(window.innerWidth - minVisible, newRight));
 
       // Always anchor bottom to launcher (no vertical movement)
-      const launcherEl = document.querySelector<HTMLElement>(".ai-dock-launcher");
-      const newBottom = launcherEl
-        ? window.innerHeight - launcherEl.getBoundingClientRect().top + 8
+      const snappedPos = getDockPositionFromFrame();
+      const newBottom = snappedPos
+        ? snappedPos.bottom
         : dragStartRef.current.bottom;
+      if (snappedPos) {
+        setLauncherBottom((prev) => (prev === snappedPos.launcherBottom ? prev : snappedPos.launcherBottom));
+      }
 
       // Horizontal snap-back to launcher when close
-      if (launcherEl) {
-        const lr = launcherEl.getBoundingClientRect();
-        const snapRight = window.innerWidth - lr.right;
-        if (Math.abs(newRight - snapRight) < 60) {
-          newRight = snapRight;
-        }
+      if (snappedPos && Math.abs(newRight - snappedPos.right) < 60) {
+        newRight = snappedPos.right;
+        setIsDockDetached(false);
       }
 
       setDockPos({ right: newRight, bottom: newBottom });
@@ -130,27 +173,27 @@ export function AIDock({
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
     };
-  }, [isDragging]);
+  }, [getDockPositionFromFrame, isDragging]);
 
-  // Keep the dock vertically pinned to the launcher even when the launcher moves
-  // (e.g. window resize, scroll, layout shifts) so it can never drift up/down.
+  // Keep the dock vertically pinned to the frame even when the layout shifts,
+  // while preserving the user's horizontal drag offset.
   useEffect(() => {
     if (!dockPos) return;
-    const repinToLauncher = () => {
-      const launcherEl = document.querySelector<HTMLElement>(".ai-dock-launcher");
-      if (!launcherEl) return;
-      const lr = launcherEl.getBoundingClientRect();
-      const snappedBottom = window.innerHeight - lr.top + 2;
+    const repinToFrame = () => {
+      const snappedPos = getDockPositionFromFrame();
+      if (!snappedPos) return;
+      const snappedBottom = snappedPos.bottom;
+      setLauncherBottom((prev) => (prev === snappedPos.launcherBottom ? prev : snappedPos.launcherBottom));
       setDockPos((prev) => (prev && prev.bottom !== snappedBottom ? { right: prev.right, bottom: snappedBottom } : prev));
     };
-    repinToLauncher();
-    window.addEventListener("resize", repinToLauncher);
-    window.addEventListener("scroll", repinToLauncher, true);
+    repinToFrame();
+    window.addEventListener("resize", repinToFrame);
+    window.addEventListener("scroll", repinToFrame, true);
     return () => {
-      window.removeEventListener("resize", repinToLauncher);
-      window.removeEventListener("scroll", repinToLauncher, true);
+      window.removeEventListener("resize", repinToFrame);
+      window.removeEventListener("scroll", repinToFrame, true);
     };
-  }, [dockPos]);
+  }, [dockPos, getDockPositionFromFrame]);
 
   const handleResizeStart = useCallback((event: ReactMouseEvent<HTMLDivElement>) => {
     event.preventDefault();
@@ -231,6 +274,18 @@ export function AIDock({
       if (lastTargetEl.current && lastTargetEl.current !== element) {
         lastTargetEl.current.classList.remove("is-ai-spotlight");
       }
+      if (currentStep.spotlight === false) {
+        if (lastTargetEl.current) {
+          lastTargetEl.current.classList.remove("is-ai-spotlight");
+          lastTargetEl.current = null;
+        }
+        if (lastRectRef.current !== "hidden") {
+          lastRectRef.current = "hidden";
+          setTargetRect(null);
+        }
+        setIsWaiting(false);
+        return;
+      }
       if (lastTargetEl.current !== element) {
         element.classList.add("is-ai-spotlight");
         lastTargetEl.current = element;
@@ -295,7 +350,14 @@ export function AIDock({
       if (element) {
         if (!hasScrolledToStep.current) {
           hasScrolledToStep.current = true;
-          element.scrollIntoView({ block: "center", inline: "center", behavior: "auto" });
+          if (currentStep.spotlight !== false) {
+            const isDocumentHeaderTarget = !!element.closest(".document-header");
+            element.scrollIntoView({
+              block: isDocumentHeaderTarget ? "nearest" : "center",
+              inline: "center",
+              behavior: "auto",
+            });
+          }
           window.requestAnimationFrame(() => {
             if (cancelled) return;
             syncRect(element);
@@ -665,20 +727,34 @@ export function AIDock({
     </div>
   );
 
+  const dockLeft = dockPos ? window.innerWidth - dockPos.right - dockSize.width : null;
+  const frameRect = typeof document === "undefined"
+    ? null
+    : document.querySelector<HTMLElement>(".product-window")?.getBoundingClientRect() ?? null;
+  const launcherLeft = dockLeft == null
+    ? null
+    : frameRect
+      ? Math.min(Math.max(dockLeft, frameRect.left), frameRect.right - launcherWidth)
+      : dockLeft;
+  const launcherStyle: CSSProperties | undefined = launcherLeft == null
+    ? undefined
+    : {
+        left: launcherLeft,
+        bottom: launcherBottom,
+      };
+
   const launcher = (
     <button
       className="ai-dock-launcher"
       onClick={handleToggleCollapsed}
+      ref={launcherElRef}
+      style={launcherStyle}
       title={collapsed ? "Open Skills AI" : "Minimise Skills AI"}
       type="button"
     >
       <span className="ai-dock-pulse" aria-hidden="true" />
       <span>Skills AI</span>
-      {collapsed ? (
-        <FontAwesomeIcon icon={faUpRightAndDownLeftFromCenter} />
-      ) : (
-        <kbd>⌘K</kbd>
-      )}
+      <kbd>⌘K</kbd>
     </button>
   );
 
@@ -693,11 +769,10 @@ export function AIDock({
   ) : null;
 
   if (typeof document === "undefined") return dockOverlay;
-  const launcherHost = document.querySelector(".product-window") ?? document.body;
   return (
     <>
       {createPortal(dockOverlay, document.body)}
-      {createPortal(launcher, launcherHost)}
+      {createPortal(launcher, document.body)}
       {spotlight && createPortal(spotlight, document.body)}
     </>
   );

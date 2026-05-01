@@ -12,7 +12,7 @@ import {
 import { type CSSProperties, useEffect, useRef, useState } from "react";
 import { Card } from "../ui/Card";
 import { campaign } from "../../data/cocaColaCampaign";
-import { FeedDocumentView } from "./DocumentFrame";
+import { FeedDocumentView, FeedStageCard } from "./DocumentFrame";
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat("de-DE", {
@@ -176,7 +176,7 @@ export function BudgetBuilder({ estimateStatus = "ready", feedStageActionLabel, 
     approvalTimerRef.current = window.setTimeout(() => {
       setEstimateFlowStatus("approved");
       approvalTimerRef.current = null;
-    }, 2000);
+    }, 1300);
   };
 
   useEffect(() => {
@@ -202,11 +202,6 @@ export function BudgetBuilder({ estimateStatus = "ready", feedStageActionLabel, 
   const approvalClassName = isApproved ? "approved" : estimateSent ? "sent" : "pending";
   const stageLabel = isApproved ? "Client approved" : estimateSent ? "Awaiting client approval" : "Ready for approval";
   const stageActionLabel = isApproved ? "Generate project" : estimateSent ? "Awaiting client approval" : (feedStageActionLabel ?? "Send estimate");
-  const stageClassName = isApproved
-    ? "feed-stage-card budget-stage-card approved"
-    : estimateSent
-      ? "feed-stage-card budget-stage-card sent"
-      : "feed-stage-card budget-stage-card";
 
   return (
     <Card className="budget-card">
@@ -395,25 +390,15 @@ export function BudgetBuilder({ estimateStatus = "ready", feedStageActionLabel, 
           </section>
         </main>
 
-        <aside className="budget-side-panel">
-          <section className={stageClassName}>
-            <header>
-              <small>04 Jun 2026, 13:31</small>
-            </header>
-            <div>
-              <strong>Stage</strong>
-              <span><i /> {stageLabel}</span>
-              <button
-                className="feed-stage-action"
-                data-tour-anchor="budget-estimate-stage"
-                data-stage-state={isApproved ? "approved" : estimateSent ? "sent" : "ready"}
-                onClick={isApproved ? onProjectNavigate : sendEstimateForApproval}
-                type="button"
-              >
-                {stageActionLabel}
-              </button>
-            </div>
-          </section>
+        <aside className="feed-side-panel budget-side-panel">
+          <FeedStageCard
+            actionAnchor="budget-estimate-stage"
+            actionLabel={stageActionLabel}
+            defaultDate="04 Jun 2026, 13:31"
+            onAction={isApproved ? onProjectNavigate : sendEstimateForApproval}
+            stageLabel={stageLabel}
+            stageState={isApproved ? "approved" : estimateSent ? "sent" : "ready"}
+          />
 
           <section className={estimateSent ? "budget-estimate-summary approved" : "budget-estimate-summary"}>
             <button className="budget-export-pdf" type="button" aria-label="Export PDF" title="Export PDF">

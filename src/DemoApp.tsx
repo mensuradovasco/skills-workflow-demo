@@ -53,7 +53,12 @@ import { ProjectSetup } from "./components/product/ProjectSetup";
 import { ResourcePlanner } from "./components/product/ResourcePlanner";
 import { TaskBoard } from "./components/product/TaskBoard";
 import { campaign, demoSteps, type DemoStep } from "./data/cocaColaCampaign";
-import { guidedDemoSteps, type GuidedDemoTarget } from "./data/guidedDemo";
+import {
+  firstGuidedIndexForStage,
+  guidedDemoSteps,
+  guidedStepStage,
+  type GuidedDemoTarget,
+} from "./data/guidedDemo";
 import { stepDelay } from "./motion/transitions";
 
 const stepDurations: Record<DemoStep, number> = {
@@ -111,6 +116,22 @@ export function DemoApp() {
   const [isGuidedDemoActive, setIsGuidedDemoActive] = useState(() => readGuidedDemoPreference());
   const [guidedStepRequest, setGuidedStepRequest] = useState<number | null>(null);
   const [tourView, setTourView] = useState<TourView>(null);
+  const [activeGuidedStepId, setActiveGuidedStepId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleStep = (event: Event) => {
+      const id = (event as CustomEvent<{ id?: string }>).detail?.id ?? null;
+      setActiveGuidedStepId(id);
+    };
+    window.addEventListener("guided-demo-step-active", handleStep);
+    return () => window.removeEventListener("guided-demo-step-active", handleStep);
+  }, []);
+
+  const railActiveStep = useMemo<DemoStep>(() => {
+    if (!activeGuidedStepId) return activeStep;
+    const guidedStep = guidedDemoSteps.find((s) => s.id === activeGuidedStepId);
+    return guidedStep ? guidedStepStage(guidedStep) : activeStep;
+  }, [activeGuidedStepId, activeStep]);
 
   const activeIndex = useMemo(
     () => demoSteps.findIndex((step) => step.id === activeStep),
@@ -139,7 +160,7 @@ export function DemoApp() {
   const navigateForGuidedDemo = useCallback((target: GuidedDemoTarget) => {
     setIsAutoPlaying(false);
     setIsChatOpen(false);
-    setActiveWorkspace(null);
+    setActiveWorkspace(target.workspace ?? null);
     setTourView(target.view ?? null);
     setActiveStep(target.step);
   }, []);
@@ -148,6 +169,7 @@ export function DemoApp() {
     setGuidedDemoActive(false);
     setIsAutoPlaying(false);
     setTourView(null);
+    setActiveGuidedStepId(null);
   }, [setGuidedDemoActive]);
 
   const isGuidedProxyClick = () => document.body.dataset.guidedClickProxy === "true";
@@ -163,11 +185,11 @@ export function DemoApp() {
   }, [setGuidedDemoActive]);
 
   const jumpToGuidedStage = useCallback((step: DemoStep) => {
-    const guidedIndex = firstGuidedIndexForStage(step);
-    setActiveWorkspace(null);
+    const guidedIndex = firstGuidedIndexForStage(guidedDemoSteps, step);
     setIsAutoPlaying(false);
 
     if (guidedIndex == null) {
+      setActiveWorkspace(null);
       setTourView(null);
       setActiveStep(step);
       return;
@@ -179,11 +201,12 @@ export function DemoApp() {
     window.localStorage.setItem(GUIDED_DEMO_STEP_KEY, String(guidedIndex));
     setTourView(target.view ?? null);
     setActiveStep(target.step);
+    setActiveWorkspace(target.workspace ?? null);
     setGuidedDemoActive(true);
   }, [setGuidedDemoActive]);
 
   return (
-    <AppShell activeStep={activeStep} guidedActive={isGuidedDemoActive} onStepChange={jumpToGuidedStage}>
+    <AppShell activeStep={railActiveStep} guidedActive={isGuidedDemoActive} onStepChange={jumpToGuidedStage}>
       <section className="demo-stage">
         <div className="product-window">
           <div className="skills-topbar">
@@ -230,7 +253,13 @@ export function DemoApp() {
                     <button
                       aria-label={item.label}
                       className={index === activeRailIndex ? "active" : ""}
-                      data-tour-anchor={item.workspace === "resources" ? "resources-sidebar-button" : undefined}
+                      data-tour-anchor={
+                        item.workspace === "resources"
+                          ? "resources-sidebar-button"
+                          : item.workspace === "profitability"
+                            ? "profitability-sidebar-button"
+                            : undefined
+                      }
                       key={item.label}
                       onClick={() => {
                         if (!isGuidedProxyClick()) handleManualNavigation();
@@ -781,8 +810,10 @@ function StepContent({
                     ? "KANBAN"
                     : tourView === "calendar"
                       ? "CALENDAR"
-                      : tourView === "jobs"
-                        ? "KANBAN BY PERSON"
+                    : tourView === "jobs"
+                      ? "KANBAN BY PERSON"
+                      : tourView === "resourceUtilization"
+                        ? "RESOURCE UTILIZATION"
                         : undefined
             }
           />
@@ -821,48 +852,24 @@ function StepContent({
   if (step === "resources") {
     return (
       <div className="clickable-panel">
-        <ResourcePlanner />
+        <ResourcePlanner onProjectNavigate={() => onNavigate("project")} />
         {!guidedMode && (
           <HotspotButton
             className="top-right-action"
             icon="play"
-            label="Start"
-            onClick={() => onNavigate("execution")}
-            tooltip="Start execution once the team has capacity."
-          />
-        )}
-      </div>
-    );
-  }
-
-  if (step === "execution") {
-    return (
-      <div className="clickable-panel">
-        <ExecutionProofing />
-        {!guidedMode && (
-          <HotspotButton
-            className="top-right-action"
-            label="Review"
+            label="Approve & bill"
             onClick={() => onNavigate("proofing")}
-            tooltip="Open the approval/proofing step."
+            tooltip="Move the deliverables into final approval and billing."
           />
         )}
       </div>
     );
   }
 
-  if (step === "proofing") {
+  if (step === "execution" || step === "proofing") {
     return (
       <div className="clickable-panel">
         <ExecutionProofing />
-        {!guidedMode && (
-          <HotspotButton
-            className="top-right-action"
-            label="Track"
-            onClick={() => onNavigate("profitability")}
-            tooltip="Move to profitability and plan-vs-actual tracking."
-          />
-        )}
       </div>
     );
   }
@@ -916,7 +923,7 @@ function crumbLabel(step: DemoStep): string {
     tasks: "Coca-Cola - Summer Assets",
     resources: "Resource Allocation",
     execution: "Coca-Cola - Summer Assets",
-    proofing: "Create 3D asset",
+    proofing: "3D Billboard – Create 3D asset",
     profitability: "Coca-Cola - Summer Assets",
   };
   return labels[step] ?? stageTitleShort(step);
@@ -978,20 +985,6 @@ function railIndexForWorkspace(workspace: WorkspaceView | null, step: DemoStep) 
     profitability: 8,
   };
   return indexes[workspace];
-}
-
-function firstGuidedIndexForStage(step: DemoStep) {
-  const stageIndex: Partial<Record<DemoStep, number>> = {
-    request: 0,
-    brief: 1,
-    budget: 2,
-    approval: 2,
-    project: 4,
-    resources: 8,
-    proofing: 10,
-  };
-
-  return stageIndex[step] ?? null;
 }
 
 function getInitialRoute(): { step: DemoStep; workspace: WorkspaceView | null } {

@@ -8,7 +8,8 @@ export type DemoStep =
   | "resources"
   | "execution"
   | "proofing"
-  | "profitability";
+  | "profitability"
+  | "billing";
 
 export const demoSteps: Array<{ id: DemoStep; label: string; verb: string }> = [
   { id: "request", label: "Request", verb: "Capture" },
@@ -19,8 +20,9 @@ export const demoSteps: Array<{ id: DemoStep; label: string; verb: string }> = [
   { id: "tasks", label: "Tasks", verb: "Build" },
   { id: "resources", label: "Resourcing", verb: "Resourcing" },
   { id: "execution", label: "Execute", verb: "Execute" },
-  { id: "proofing", label: "Asset approvals and billing", verb: "Approve & bill" },
-  { id: "profitability", label: "Track and monitor", verb: "Track" },
+  { id: "proofing", label: "Proofing", verb: "Proof" },
+  { id: "profitability", label: "Planned vs Actual", verb: "Track" },
+  { id: "billing", label: "Billing", verb: "Bill" },
 ];
 
 export const campaign = {
