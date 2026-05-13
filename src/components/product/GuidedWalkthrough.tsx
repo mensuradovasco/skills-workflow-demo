@@ -134,7 +134,7 @@ export function GuidedWalkthrough({
       if (element) {
         if (!hasScrolledToStep.current) {
           hasScrolledToStep.current = true;
-          element.scrollIntoView({ block: "center", inline: "center", behavior: "auto" });
+          element.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "auto" });
           window.requestAnimationFrame(() => {
             if (cancelled) return;
             syncRect(element);

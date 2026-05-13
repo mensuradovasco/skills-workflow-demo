@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import {
@@ -27,6 +27,7 @@ import {
   faWandMagicSparkles,
 } from "@fortawesome/free-solid-svg-icons";
 import { AppShell } from "./components/layout/AppShell";
+import { DesignSystem } from "./components/product/DesignSystem";
 import { Badge } from "./components/ui/Badge";
 import { Card } from "./components/ui/Card";
 import {
@@ -35,7 +36,7 @@ import {
   JobsWorkspace,
   ProjectsWorkspace,
   RequestsWorkspace,
-  ResourcesWorkspace,
+  ResourceMetricsWorkspace,
   TasksWorkspace,
 } from "./components/product/AgencyWorkspaces";
 import { BudgetBuilder } from "./components/product/BudgetBuilder";
@@ -83,24 +84,38 @@ type WorkspaceView =
   | "tasks"
   | "budget"
   | "resources"
+  | "resourceMetrics"
   | "profitability";
 
 type TourView = GuidedDemoTarget["view"] | null;
 
-const railItems: Array<{ icon: IconDefinition; label: string; workspace: WorkspaceView | "home" }> = [
-  { icon: faHouse, label: "Home", workspace: "home" },
-  { icon: faUsers, label: "Clients", workspace: "clients" },
-  { icon: faBriefcase, label: "Jobs", workspace: "jobs" },
-  { icon: faFolderOpen, label: "Projects", workspace: "projects" },
-  { icon: faClipboardList, label: "Requests", workspace: "requests" },
-  { icon: faListCheck, label: "Tasks", workspace: "tasks" },
-  { icon: faCalculator, label: "Budget", workspace: "budget" },
-  { icon: faPeopleArrows, label: "Resources", workspace: "resources" },
-  { icon: faChartPie, label: "Profitability", workspace: "profitability" },
+type RailItem =
+  | { kind: "single"; icon: IconDefinition; label: string; workspace: WorkspaceView | "home" }
+  | { kind: "group"; icon: IconDefinition; label: string; items: Array<{ label: string; workspace: WorkspaceView }> };
+
+const railItems: RailItem[] = [
+  { kind: "single", icon: faHouse, label: "Home", workspace: "home" },
+  { kind: "group", icon: faUsers, label: "Clients", items: [{ label: "All", workspace: "clients" }] },
+  { kind: "group", icon: faCalculator, label: "Budget", items: [{ label: "All", workspace: "budget" }] },
+  { kind: "group", icon: faFolderOpen, label: "Projects", items: [{ label: "All", workspace: "projects" }] },
+  { kind: "group", icon: faBriefcase, label: "Jobs", items: [{ label: "All", workspace: "jobs" }] },
+  { kind: "group", icon: faListCheck, label: "Tasks", items: [{ label: "All", workspace: "tasks" }] },
+  { kind: "group", icon: faClipboardList, label: "Requests", items: [{ label: "All", workspace: "requests" }] },
+  {
+    kind: "group",
+    icon: faPeopleArrows,
+    label: "Resources",
+    items: [
+      { label: "Scheduler", workspace: "resources" },
+      { label: "Team Capacity", workspace: "resourceMetrics" },
+    ],
+  },
+  { kind: "group", icon: faChartPie, label: "Profitability", items: [{ label: "All", workspace: "profitability" }] },
 ];
 
 export function DemoApp() {
   const initialRoute = getInitialRoute();
+  const isEmbed = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("embed") === "1";
   const [activeStep, setActiveStep] = useState<DemoStep>(initialRoute.step);
   const [navHistory, setNavHistory] = useState<DemoStep[]>([initialRoute.step]);
 
@@ -118,6 +133,18 @@ export function DemoApp() {
   const [guidedStepRequest, setGuidedStepRequest] = useState<number | null>(null);
   const [tourView, setTourView] = useState<TourView>(null);
   const [activeGuidedStepId, setActiveGuidedStepId] = useState<string | null>(null);
+  const [showDesignSystem, setShowDesignSystem] = useState(false);
+  const [openRailGroup, setOpenRailGroup] = useState<string | null>(null);
+  const railRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!openRailGroup) return;
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!railRef.current?.contains(event.target as Node)) setOpenRailGroup(null);
+    };
+    window.addEventListener("pointerdown", handlePointerDown);
+    return () => window.removeEventListener("pointerdown", handlePointerDown);
+  }, [openRailGroup]);
 
   useEffect(() => {
     const handleStep = (event: Event) => {
@@ -206,8 +233,29 @@ export function DemoApp() {
     setGuidedDemoActive(true);
   }, [setGuidedDemoActive]);
 
+  if (showDesignSystem) {
+    return (
+      <AppShell
+        activeStep={railActiveStep}
+        guidedActive={isGuidedDemoActive}
+        onStepChange={jumpToGuidedStage}
+        onOpenDesignSystem={() => setShowDesignSystem(true)}
+        hideDemoChrome
+      >
+        <DesignSystem onBack={() => setShowDesignSystem(false)} />
+      </AppShell>
+    );
+  }
+
   return (
-    <AppShell activeStep={railActiveStep} guidedActive={isGuidedDemoActive} onStepChange={jumpToGuidedStage}>
+    <AppShell
+      activeStep={railActiveStep}
+      guidedActive={isGuidedDemoActive}
+      onStepChange={jumpToGuidedStage}
+      onOpenDesignSystem={() => setShowDesignSystem(true)}
+      hideDemoChrome={isEmbed}
+      embedMode={isEmbed}
+    >
       <section className="demo-stage">
         <div className="product-window">
           <div className="skills-topbar">
@@ -246,36 +294,107 @@ export function DemoApp() {
               <strong>vasco.mensurado</strong>
             </div>
           </div>
+          {activeStep === "request" && !activeWorkspace && (
+            <div className="request-notification highlight" data-tour-anchor="client-request" aria-live="polite">
+              <div className="brand-avatar client-logo-badge">
+                <img src={campaign.clientLogo} alt={campaign.client} />
+              </div>
+              <div>
+                <small>New client request</small>
+                <strong>{campaign.client}</strong>
+                <span>{campaign.campaign}</span>
+                <em>Scope: website, 15s video and 3D banner</em>
+              </div>
+            </div>
+          )}
           <div className="product-shell">
             <div className="product-main">
               <div className={`skills-body ${bodyMode}`}>
-                <aside className="app-rail" aria-label="Product navigation">
-                  {railItems.map((item, index) => (
-                    <button
-                      aria-label={item.label}
-                      className={index === activeRailIndex ? "active" : ""}
-                      data-tour-anchor={
-                        item.workspace === "resources"
-                          ? "resources-sidebar-button"
-                          : item.workspace === "profitability"
-                            ? "profitability-sidebar-button"
-                            : undefined
-                      }
-                      key={item.label}
-                      onClick={() => {
-                        if (!isGuidedProxyClick()) handleManualNavigation();
-                        if (item.workspace === "home") {
-                          setActiveWorkspace(null);
-                          setActiveStep("request");
-                          return;
-                        }
-                        setActiveWorkspace(item.workspace);
-                      }}
-                      title={item.label}
-                    >
-                      <FontAwesomeIcon icon={item.icon} />
-                    </button>
-                  ))}
+                <aside className="app-rail" aria-label="Product navigation" ref={railRef}>
+                  {railItems.map((item, index) => {
+                    const isActive = index === activeRailIndex;
+                    if (item.kind === "single") {
+                      return (
+                        <button
+                          aria-label={item.label}
+                          className={isActive ? "active" : ""}
+                          data-tour-anchor={
+                            item.workspace === "profitability"
+                              ? "profitability-sidebar-button"
+                              : undefined
+                          }
+                          key={item.label}
+                          onClick={() => {
+                            if (!isGuidedProxyClick()) handleManualNavigation();
+                            setOpenRailGroup(null);
+                            if (item.workspace === "home") {
+                              setActiveWorkspace(null);
+                              setActiveStep("request");
+                              return;
+                            }
+                            setActiveWorkspace(item.workspace);
+                          }}
+                          title={item.label}
+                        >
+                          <FontAwesomeIcon icon={item.icon} />
+                        </button>
+                      );
+                    }
+                    const isOpen = openRailGroup === item.label;
+                    return (
+                      <div
+                        className="app-rail-group"
+                        key={item.label}
+                        onMouseEnter={() => setOpenRailGroup(item.label)}
+                        onMouseLeave={() => setOpenRailGroup((current) => (current === item.label ? null : current))}
+                      >
+                        <button
+                          aria-label={item.label}
+                          aria-expanded={isOpen}
+                          aria-haspopup="menu"
+                          className={`${isActive ? "active" : ""}${isOpen ? " is-open" : ""}`}
+                          data-tour-anchor={
+                            item.label === "Resources" ? "resources-sidebar-button" : undefined
+                          }
+                          onClick={() => {
+                            if (!isGuidedProxyClick()) handleManualNavigation();
+                            setOpenRailGroup(item.label);
+                            const first = item.items[0];
+                            if (first) setActiveWorkspace(first.workspace);
+                          }}
+                          onFocus={() => setOpenRailGroup(item.label)}
+                          title={item.label}
+                        >
+                          <FontAwesomeIcon icon={item.icon} />
+                        </button>
+                        {isOpen && (
+                          <div className="app-rail-flyout" role="menu" aria-label={item.label}>
+                            <div className="app-rail-flyout-card">
+                              <div className="app-rail-flyout-title">{item.label}</div>
+                              <ul>
+                                {item.items.map((sub) => (
+                                  <li key={sub.workspace}>
+                                    <button
+                                      type="button"
+                                      role="menuitem"
+                                      className={activeWorkspace === sub.workspace ? "is-current" : ""}
+                                      onClick={() => {
+                                        if (!isGuidedProxyClick()) handleManualNavigation();
+                                        setActiveWorkspace(sub.workspace);
+                                        setOpenRailGroup(null);
+                                      }}
+                                    >
+                                      {sub.label}
+                                    </button>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </aside>
                 <div className="app-content">
                   {activeWorkspace ? (
@@ -286,9 +405,9 @@ export function DemoApp() {
                       guidedMode={isGuidedDemoActive}
                       onStartGuidedDemoFromRequest={startGuidedDemoFromRequest}
                       tourView={tourView}
-                      onNavigate={(step) => {
+                      onNavigate={(step, view) => {
                         setActiveWorkspace(null);
-                        setTourView(null);
+                        setTourView(view ?? null);
                         setActiveStep(step);
                       }}
                     />
@@ -324,6 +443,7 @@ const homeTasks = [
   ["Color grade hero shot", "Spotify Q3 Review", "1 day"],
   ["Build 3D digital banner", "Samsung Galaxy Launch", "2 days"],
   ["Storyboard product reveal", "L'Oreal Beauty Cutdown", "4 days"],
+  ["Approve final cut", "Adidas Spring Drop", "Done"],
 ];
 
 // RAG mapping for the My tasks badges. Today is the most urgent (red),
@@ -432,7 +552,8 @@ function WorkspaceContent({ workspace }: { workspace: WorkspaceView }) {
   if (workspace === "requests") return <RequestsWorkspace />;
   if (workspace === "tasks") return <TasksWorkspace />;
   if (workspace === "budget") return <BudgetWorkspace />;
-  if (workspace === "resources") return <ResourcesWorkspace />;
+  if (workspace === "resources") return <ResourcePlanner />;
+  if (workspace === "resourceMetrics") return <ResourceMetricsWorkspace />;
   return <AgencyProfitabilityWorkspace />;
 }
 
@@ -644,7 +765,7 @@ function StepContent({
   guidedMode: boolean;
   step: DemoStep;
   tourView: TourView;
-  onNavigate: (step: DemoStep) => void;
+  onNavigate: (step: DemoStep, view?: TourView) => void;
   onStartGuidedDemoFromRequest: () => void;
 }) {
   if (step === "request") {
@@ -672,20 +793,36 @@ function StepContent({
           </div>
           <div className="mini-section">
             <h4>My tasks</h4>
-            {homeTasks.map(([name, client, due], index) => (
-              <div
-                className={`task-row fade-up${index === 0 ? " is-active" : ""}`}
-                key={name}
-                style={stepDelay(index * 80)}
-              >
-                <img className="task-thumb" src={taskImages[index]} alt="" />
-                <div>
-                  <strong>{name}</strong>
-                  <small className="task-client">{client}</small>
+            {homeTasks.map(([name, client, due], index) => {
+              const isNavigable = /Coca-Cola.*Summer Assets/i.test(client);
+              const className = `task-row fade-up${index === 0 ? " is-active" : ""}${isNavigable ? " is-navigable" : ""}`;
+              const content = (
+                <>
+                  <img className="task-thumb" src={taskImages[index]} alt="" />
+                  <div>
+                    <strong>{name}</strong>
+                    <small className="task-client">{client}</small>
+                  </div>
+                  <Badge tone={taskDueTone(due)}>{due}</Badge>
+                </>
+              );
+              return isNavigable ? (
+                <button
+                  type="button"
+                  className={className}
+                  key={name}
+                  style={stepDelay(index * 80)}
+                  onClick={() => onNavigate("project", "documents")}
+                  aria-label={`Open ${client}`}
+                >
+                  {content}
+                </button>
+              ) : (
+                <div className={className} key={name} style={stepDelay(index * 80)}>
+                  {content}
                 </div>
-                <Badge tone={taskDueTone(due)}>{due}</Badge>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
         <div className="home-side">
@@ -693,16 +830,42 @@ function StepContent({
             <h4>Project Spotlight</h4>
             <p>Most recent and delayed</p>
             {[
-              { name: "Coca-Cola summer assets", stage: "Under approval" },
-              { name: "Nike hero refresh", stage: "In progress" },
-              { name: "Samsung launch page", stage: "In progress" },
-            ].map((project, index) => (
-              <div className="spotlight-tile" key={project.name} data-stage={project.stage.toLowerCase().replace(/\s+/g, "-")}>
-                <img src={spotlightImages[index]} alt="" />
-                <span className="spotlight-stage">{project.stage}</span>
-                <small>{project.name}</small>
-              </div>
-            ))}
+              { name: "Coca-Cola summer assets", stage: "Under approval", type: "Creative", target: "project" as DemoStep, view: "documents" as TourView },
+              { name: "Nike hero refresh", stage: "In progress", type: "Digital", target: null, view: null },
+              { name: "Samsung launch page", stage: "In progress", type: "Social media", target: null, view: null },
+            ].map((project, index) => {
+              const isNavigable = project.target !== null;
+              const className = `spotlight-tile${isNavigable ? " is-navigable" : ""}`;
+              const stageAttr = project.stage.toLowerCase().replace(/\s+/g, "-");
+              const tileStyle = { "--tile-delay": `${240 + index * 120}ms` } as CSSProperties;
+              const content = (
+                <>
+                  <img src={spotlightImages[index]} alt="" />
+                  <span className="spotlight-stage">{project.stage}</span>
+                  <small>
+                    <strong>{project.name}</strong>
+                    <span className="spotlight-type">{project.type}</span>
+                  </small>
+                </>
+              );
+              return isNavigable ? (
+                <button
+                  type="button"
+                  className={className}
+                  data-stage={stageAttr}
+                  key={project.name}
+                  style={tileStyle}
+                  onClick={() => onNavigate(project.target as DemoStep, project.view)}
+                  aria-label={`Open ${project.name}`}
+                >
+                  {content}
+                </button>
+              ) : (
+                <div className={className} data-stage={stageAttr} key={project.name} style={tileStyle}>
+                  {content}
+                </div>
+              );
+            })}
           </div>
           <div className="team-week">
             <h4>Your team this week</h4>
@@ -715,7 +878,7 @@ function StepContent({
                     <small>{member.role}</small>
                   </div>
                   <div className="capacity-meter" aria-label={`${member.name} capacity ${member.load}%`}>
-                    <span style={{ width: `${member.load}%`, background: member.color }} />
+                    <span style={{ "--capacity-load": `${member.load}%`, background: member.color } as CSSProperties} />
                   </div>
                   <em>{member.load}%</em>
                 </div>
@@ -740,19 +903,6 @@ function StepContent({
             ))}
           </div>
         </div>
-        {guidedMode && (
-          <div className="request-notification slide-in" data-tour-anchor="client-request" style={stepDelay(520)}>
-            <div className="brand-avatar client-logo-badge">
-              <img src={campaign.clientLogo} alt={campaign.client} />
-            </div>
-            <div>
-              <small>New client request</small>
-              <strong>{campaign.client}</strong>
-              <span>{campaign.campaign}</span>
-              <em>Scope: website, 15s video and 3D banner</em>
-            </div>
-          </div>
-        )}
       </div>
     );
   }
@@ -981,12 +1131,13 @@ function railIndexForWorkspace(workspace: WorkspaceView | null, step: DemoStep) 
 
   const indexes: Record<WorkspaceView, number> = {
     clients: 1,
-    jobs: 2,
+    budget: 2,
     projects: 3,
-    requests: 4,
+    jobs: 4,
     tasks: 5,
-    budget: 6,
+    requests: 6,
     resources: 7,
+    resourceMetrics: 7,
     profitability: 8,
   };
   return indexes[workspace];
@@ -999,7 +1150,7 @@ function getInitialRoute(): { step: DemoStep; workspace: WorkspaceView | null } 
   const step = params.get("step");
   const workspace = params.get("workspace");
   const validStep = demoSteps.some((item) => item.id === step) ? step as DemoStep : "request";
-  const validWorkspaces: WorkspaceView[] = ["clients", "jobs", "projects", "requests", "tasks", "budget", "resources", "profitability"];
+  const validWorkspaces: WorkspaceView[] = ["clients", "jobs", "projects", "requests", "tasks", "budget", "resources", "resourceMetrics", "profitability"];
   const validWorkspace = validWorkspaces.includes(workspace as WorkspaceView) ? workspace as WorkspaceView : null;
 
   return {

@@ -59,11 +59,11 @@ export function AIDock({
   const [dockSize, setDockSize] = useState({ width: 320, height: 380 });
   const [isResizing, setIsResizing] = useState(false);
   const resizeStartRef = useRef({ x: 0, y: 0, w: 0, h: 0 });
-  const [dockPos, setDockPos] = useState<{ right: number; bottom: number } | null>(null);
-  const [launcherBottom, setLauncherBottom] = useState(LAUNCHER_FRAME_OFFSET);
+  const [dockPos, setDockPos] = useState<{ left: number; top: number } | null>(null);
+  const [launcherTop, setLauncherTop] = useState<number | null>(null);
   const [isDockDetached, setIsDockDetached] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
-  const dragStartRef = useRef({ mouseX: 0, mouseY: 0, right: 0, bottom: 0 });
+  const dragStartRef = useRef({ mouseX: 0, mouseY: 0, left: 0, top: 0 });
   const dockElRef = useRef<HTMLDivElement | null>(null);
   const launcherElRef = useRef<HTMLButtonElement | null>(null);
   const [launcherWidth, setLauncherWidth] = useState(LAUNCHER_FALLBACK_WIDTH);
@@ -83,14 +83,20 @@ export function AIDock({
     const frame = document.querySelector<HTMLElement>(".product-window");
     if (!frame) return null;
     const frameRect = frame.getBoundingClientRect();
-    const dockLeft = frameRect.right - (dockSize.width * DEFAULT_FRAME_OVERLAP);
-    const nextLauncherBottom = Math.max(LAUNCHER_FRAME_OFFSET, window.innerHeight - frameRect.bottom + LAUNCHER_FRAME_OFFSET);
+    // Document coords (so the dock + launcher scroll naturally with the platform).
+    const docTop = window.scrollY + frameRect.top;
+    const docLeft = window.scrollX + frameRect.left;
+    const docBottom = docTop + frameRect.height;
+    const docRight = docLeft + frameRect.width;
+    const dockLeftDoc = docRight - (dockSize.width * DEFAULT_FRAME_OVERLAP);
+    // Flush against the bottom edge of the platform frame (launcher.bottom = frame.bottom).
+    const nextLauncherTop = docBottom - LAUNCHER_HEIGHT;
     return {
-      right: window.innerWidth - (dockLeft + dockSize.width),
-      bottom: nextLauncherBottom + LAUNCHER_HEIGHT + LAUNCHER_GAP,
-      launcherBottom: nextLauncherBottom,
+      left: dockLeftDoc,
+      top: nextLauncherTop - LAUNCHER_GAP - dockSize.height,
+      launcherTop: nextLauncherTop,
     };
-  }, [dockSize.width]);
+  }, [dockSize.width, dockSize.height]);
 
   // Default position: let the chat hang out of the product frame, leaving about
   // a third inside the app. The launcher is then attached to the chat's lower
@@ -104,10 +110,10 @@ export function AIDock({
       raf = window.requestAnimationFrame(() => {
         const next = getDockPositionFromFrame();
         if (!next) return;
-        setLauncherBottom((prev) => (prev === next.launcherBottom ? prev : next.launcherBottom));
+        setLauncherTop((prev) => (prev === next.launcherTop ? prev : next.launcherTop));
         setDockPos((prev) => {
-          if (prev?.right === next.right && prev.bottom === next.bottom) return prev;
-          return next;
+          if (prev && prev.left === next.left && prev.top === next.top) return prev;
+          return { left: next.left, top: next.top };
         });
       });
     };
@@ -131,8 +137,9 @@ export function AIDock({
     dragStartRef.current = {
       mouseX: event.clientX,
       mouseY: event.clientY,
-      right: window.innerWidth - rect.right,
-      bottom: window.innerHeight - rect.bottom,
+      // Document coords for dock's current top-left corner (absolute positioning).
+      left: window.scrollX + rect.left,
+      top: window.scrollY + rect.top,
     };
     setIsDragging(true);
   }, []);
@@ -140,31 +147,33 @@ export function AIDock({
   useEffect(() => {
     if (!isDragging) return;
     const onMove = (event: MouseEvent) => {
-      // Horizontal-only drag. Vertical position is always pinned to the launcher.
+      // Horizontal-only drag in document space. Vertical stays pinned to the launcher.
       const dx = event.clientX - dragStartRef.current.mouseX;
       const dock = dockElRef.current;
       const dockW = dock?.offsetWidth ?? 320;
       const minVisible = 80;
 
-      let newRight = dragStartRef.current.right - dx;
-      newRight = Math.max(-(dockW - minVisible), Math.min(window.innerWidth - minVisible, newRight));
+      let newLeft = dragStartRef.current.left + dx;
+      const docMinLeft = window.scrollX - (dockW - minVisible);
+      const docMaxLeft = window.scrollX + window.innerWidth - minVisible;
+      newLeft = Math.max(docMinLeft, Math.min(docMaxLeft, newLeft));
 
-      // Always anchor bottom to launcher (no vertical movement)
+      // Always anchor top to launcher (no vertical movement)
       const snappedPos = getDockPositionFromFrame();
-      const newBottom = snappedPos
-        ? snappedPos.bottom
-        : dragStartRef.current.bottom;
+      const newTop = snappedPos
+        ? snappedPos.top
+        : dragStartRef.current.top;
       if (snappedPos) {
-        setLauncherBottom((prev) => (prev === snappedPos.launcherBottom ? prev : snappedPos.launcherBottom));
+        setLauncherTop((prev) => (prev === snappedPos.launcherTop ? prev : snappedPos.launcherTop));
       }
 
       // Horizontal snap-back to launcher when close
-      if (snappedPos && Math.abs(newRight - snappedPos.right) < 60) {
-        newRight = snappedPos.right;
+      if (snappedPos && Math.abs(newLeft - snappedPos.left) < 60) {
+        newLeft = snappedPos.left;
         setIsDockDetached(false);
       }
 
-      setDockPos({ right: newRight, bottom: newBottom });
+      setDockPos({ left: newLeft, top: newTop });
     };
     const onUp = () => setIsDragging(false);
     window.addEventListener("mousemove", onMove);
@@ -182,9 +191,9 @@ export function AIDock({
     const repinToFrame = () => {
       const snappedPos = getDockPositionFromFrame();
       if (!snappedPos) return;
-      const snappedBottom = snappedPos.bottom;
-      setLauncherBottom((prev) => (prev === snappedPos.launcherBottom ? prev : snappedPos.launcherBottom));
-      setDockPos((prev) => (prev && prev.bottom !== snappedBottom ? { right: prev.right, bottom: snappedBottom } : prev));
+      const snappedTop = snappedPos.top;
+      setLauncherTop((prev) => (prev === snappedPos.launcherTop ? prev : snappedPos.launcherTop));
+      setDockPos((prev) => (prev && prev.top !== snappedTop ? { left: prev.left, top: snappedTop } : prev));
     };
     repinToFrame();
     window.addEventListener("resize", repinToFrame);
@@ -353,8 +362,8 @@ export function AIDock({
           if (currentStep.spotlight !== false) {
             const isDocumentHeaderTarget = !!element.closest(".document-header");
             element.scrollIntoView({
-              block: isDocumentHeaderTarget ? "nearest" : "center",
-              inline: "center",
+              block: "nearest",
+              inline: "nearest",
               behavior: "auto",
             });
           }
@@ -597,7 +606,7 @@ export function AIDock({
         ref={dockElRef}
         style={{
           width: dockSize.width,
-          ...(dockPos ? { right: dockPos.right, bottom: dockPos.bottom, top: "auto", left: "auto" } : {}),
+          ...(dockPos ? { left: dockPos.left, top: dockPos.top, right: "auto", bottom: "auto" } : {}),
         }}
       >
         {!collapsed && (
@@ -727,20 +736,27 @@ export function AIDock({
     </div>
   );
 
-  const dockLeft = dockPos ? window.innerWidth - dockPos.right - dockSize.width : null;
   const frameRect = typeof document === "undefined"
     ? null
     : document.querySelector<HTMLElement>(".product-window")?.getBoundingClientRect() ?? null;
-  const launcherLeft = dockLeft == null
-    ? null
-    : frameRect
-      ? Math.min(Math.max(dockLeft, frameRect.left), frameRect.right - launcherWidth)
-      : dockLeft;
-  const launcherStyle: CSSProperties | undefined = launcherLeft == null
+  // Pin the launcher to the right edge of the platform shell (.product-window) in
+  // document coordinates, so it scrolls naturally with the platform. When the
+  // dock has been dragged off snap, follow the dock's left edge instead.
+  const launcherLeft = (() => {
+    if (!frameRect) return null;
+    if (!isDockDetached) {
+      return window.scrollX + frameRect.right - launcherWidth;
+    }
+    if (!dockPos) return null;
+    const docFrameLeft = window.scrollX + frameRect.left;
+    const docFrameRight = window.scrollX + frameRect.right;
+    return Math.min(Math.max(dockPos.left, docFrameLeft), docFrameRight - launcherWidth);
+  })();
+  const launcherStyle: CSSProperties | undefined = launcherLeft == null || launcherTop == null
     ? undefined
     : {
         left: launcherLeft,
-        bottom: launcherBottom,
+        top: launcherTop,
       };
 
   const launcher = (

@@ -1,0 +1,260 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1680" viewBox="0 0 1440 1680" fill="none">
+  <defs>
+    <style type="text/css">
+      .t-title { font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 22px; font-weight: 700; fill: #101828; }
+      .t-sub { font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 13px; font-weight: 400; fill: #667085; }
+      .t-kpi-label { font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 12px; font-weight: 500; fill: #667085; }
+      .t-kpi-val { font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 26px; font-weight: 700; fill: #101828; }
+      .t-h { font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 11px; font-weight: 600; fill: #344054; letter-spacing: 0.02em; }
+      .t-cell { font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 12px; font-weight: 400; fill: #101828; }
+      .t-muted { fill: #667085; }
+      .t-right { text-anchor: end; }
+      .card-title { font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 13px; font-weight: 600; fill: #101828; }
+      .axis { font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 10px; fill: #98a2b3; }
+    </style>
+  </defs>
+
+  <!-- Surface -->
+  <rect width="1440" height="1680" fill="#F9FAFB"/>
+
+  <!-- Accent strip (matches demo --workspace-accent #57c69a) -->
+  <rect x="32" y="32" width="1376" height="4" fill="#57C69A"/>
+
+  <!-- Workspace header -->
+  <text x="32" y="72" class="t-title">Profitability</text>
+  <text x="32" y="94" class="t-sub">All</text>
+
+  <!-- KPI mini-cards -->
+  <g id="kpi-row">
+    <rect x="32" y="116" width="432" height="88" rx="10" fill="#FFFFFF" stroke="#EAECF0"/>
+    <text x="52" y="142" class="t-kpi-label">Agency margin</text>
+    <text x="52" y="186" class="t-kpi-val">41%</text>
+
+    <rect x="480" y="116" width="432" height="88" rx="10" fill="#FFFFFF" stroke="#EAECF0"/>
+    <text x="500" y="142" class="t-kpi-label">Revenue forecast</text>
+    <text x="500" y="186" class="t-kpi-val">�1.25m</text>
+
+    <rect x="928" y="116" width="432" height="88" rx="10" fill="#FFFFFF" stroke="#EAECF0"/>
+    <text x="948" y="142" class="t-kpi-label">Billing remaining</text>
+    <text x="948" y="186" class="t-kpi-val">�569k</text>
+  </g>
+
+  <!-- Analytics row (Margin by client / Revenue by dept / Forecast  simplified bars) -->
+  <g id="analytics">
+    <!-- Card 1 -->
+    <rect x="32" y="228" width="432" height="200" rx="12" fill="#FFFFFF" stroke="#EAECF0"/>
+    <text x="52" y="256" class="card-title">Margin by client</text>
+    <text x="380" y="256" class="axis" text-anchor="end">45%</text>
+    <text x="380" y="288" class="axis" text-anchor="end">30%</text>
+    <text x="380" y="320" class="axis" text-anchor="end">15%</text>
+    <text x="380" y="352" class="axis" text-anchor="end">0%</text>
+    <rect x="52" y="268" width="36" height="68" rx="4" fill="#57C69A" opacity="0.85"/>
+    <rect x="104" y="284" width="36" height="52" rx="4" fill="#57C69A" opacity="0.72"/>
+    <rect x="156" y="300" width="36" height="36" rx="4" fill="#57C69A" opacity="0.58"/>
+    <rect x="208" y="312" width="36" height="24" rx="4" fill="#57C69A" opacity="0.45"/>
+    <text x="70" y="418" text-anchor="middle" class="axis">CC</text>
+    <text x="122" y="418" text-anchor="middle" class="axis">Sam</text>
+    <text x="174" y="418" text-anchor="middle" class="axis">L&apos;Or</text>
+    <text x="226" y="418" text-anchor="middle" class="axis">HP</text>
+
+    <!-- Card 2 -->
+    <rect x="480" y="228" width="432" height="200" rx="12" fill="#FFFFFF" stroke="#EAECF0"/>
+    <text x="500" y="256" class="card-title">Revenue by department</text>
+    <rect x="520" y="280" width="40" height="88" rx="4" fill="#63C7C0" opacity="0.9"/>
+    <rect x="572" y="300" width="40" height="68" rx="4" fill="#63C7C0" opacity="0.75"/>
+    <rect x="624" y="316" width="40" height="52" rx="4" fill="#63C7C0" opacity="0.6"/>
+    <rect x="676" y="332" width="40" height="36" rx="4" fill="#63C7C0" opacity="0.45"/>
+    <text x="540" y="418" text-anchor="middle" class="axis">Creative</text>
+    <text x="592" y="418" text-anchor="middle" class="axis">Design</text>
+    <text x="644" y="418" text-anchor="middle" class="axis">Video</text>
+    <text x="696" y="418" text-anchor="middle" class="axis">Strat</text>
+
+    <!-- Card 3 -->
+    <rect x="928" y="228" width="432" height="200" rx="12" fill="#FFFFFF" stroke="#EAECF0"/>
+    <text x="948" y="256" class="card-title">Forecast by month</text>
+    <rect x="968" y="320" width="44" height="48" rx="4" fill="#5B8ED6" opacity="0.55"/>
+    <rect x="1024" y="304" width="44" height="64" rx="4" fill="#5B8ED6" opacity="0.68"/>
+    <rect x="1080" y="288" width="44" height="80" rx="4" fill="#5B8ED6" opacity="0.78"/>
+    <rect x="1136" y="276" width="44" height="92" rx="4" fill="#5B8ED6" opacity="0.9"/>
+    <text x="990" y="418" text-anchor="middle" class="axis">Apr</text>
+    <text x="1046" y="418" text-anchor="middle" class="axis">May</text>
+    <text x="1102" y="418" text-anchor="middle" class="axis">Jun</text>
+    <text x="1158" y="418" text-anchor="middle" class="axis">Jul</text>
+  </g>
+
+  <!-- Period filter (matches hideQuickFilters false branch simplified: Period + All) -->
+  <rect x="32" y="452" width="200" height="36" rx="8" fill="#FFFFFF" stroke="#D0D5DD"/>
+  <text x="48" y="475" class="t-sub">Period</text>
+  <text x="180" y="475" class="t-sub" text-anchor="end">All</text>
+
+  <!-- Table -->
+  <g id="table">
+    <rect x="32" y="504" width="1376" height="44" rx="8" fill="#F2F4F7"/>
+    <text x="48" y="532" class="t-h">Client</text>
+    <text x="200" y="532" class="t-h">Project</text>
+    <text x="360" y="532" class="t-h">Responsible</text>
+    <text x="520" y="532" class="t-h">Stage</text>
+    <text x="640" y="532" class="t-h">Curr.</text>
+    <text x="720" y="532" class="t-h t-right">Income</text>
+    <text x="820" y="532" class="t-h t-right">Cost</text>
+    <text x="920" y="532" class="t-h t-right">Margin</text>
+    <text x="1000" y="532" class="t-h t-right">Billed %</text>
+    <text x="1100" y="532" class="t-h t-right">Billed</text>
+    <text x="1220" y="532" class="t-h t-right">To bill</text>
+
+    <!-- Rows from initialProfitRows (static snapshot) -->
+    <g id="row-1">
+      <rect x="32" y="552" width="1376" height="40" fill="#FFFFFF"/>
+      <line x1="32" y1="592" x2="1408" y2="592" stroke="#EAECF0"/>
+      <text x="48" y="578" class="t-cell">Coca-Cola</text>
+      <text x="200" y="578" class="t-cell">Summer Campaign</text>
+      <text x="360" y="578" class="t-cell">Rachel</text>
+      <text x="520" y="578" class="t-cell">To be billed</text>
+      <text x="640" y="578" class="t-cell">USD</text>
+      <text x="800" y="578" class="t-cell t-right">391,341</text>
+      <text x="900" y="578" class="t-cell t-right">344,381</text>
+      <text x="980" y="578" class="t-cell t-right">12%</text>
+      <text x="1060" y="578" class="t-cell t-right">51%</text>
+      <text x="1160" y="578" class="t-cell t-right">200,000</text>
+      <text x="1380" y="578" class="t-cell t-right">191,341</text>
+    </g>
+    <g id="row-2">
+      <rect x="32" y="592" width="1376" height="40" fill="#FCFCFD"/>
+      <line x1="32" y1="632" x2="1408" y2="632" stroke="#EAECF0"/>
+      <text x="48" y="618" class="t-cell">L&apos;Oreal</text>
+      <text x="200" y="618" class="t-cell">New Launch</text>
+      <text x="360" y="618" class="t-cell">Sofia</text>
+      <text x="520" y="618" class="t-cell">New</text>
+      <text x="640" y="618" class="t-cell">EUR</text>
+      <text x="800" y="618" class="t-cell t-right">276,200</text>
+      <text x="900" y="618" class="t-cell t-right">69,050</text>
+      <text x="980" y="618" class="t-cell t-right">75%</text>
+      <text x="1060" y="618" class="t-cell t-right">54%</text>
+      <text x="1160" y="618" class="t-cell t-right">150,000</text>
+      <text x="1380" y="618" class="t-cell t-right">126,200</text>
+    </g>
+    <g id="row-3">
+      <rect x="32" y="632" width="1376" height="40" fill="#FFFFFF"/>
+      <line x1="32" y1="672" x2="1408" y2="672" stroke="#EAECF0"/>
+      <text x="48" y="658" class="t-cell">HP</text>
+      <text x="200" y="658" class="t-cell">3D Production</text>
+      <text x="360" y="658" class="t-cell">Arthur</text>
+      <text x="520" y="658" class="t-cell">Billed</text>
+      <text x="640" y="658" class="t-cell">USD</text>
+      <text x="800" y="658" class="t-cell t-right">261,000</text>
+      <text x="900" y="658" class="t-cell t-right">146,160</text>
+      <text x="980" y="658" class="t-cell t-right">44%</text>
+      <text x="1060" y="658" class="t-cell t-right">100%</text>
+      <text x="1160" y="658" class="t-cell t-right">261,000</text>
+      <text x="1380" y="658" class="t-cell t-right">0</text>
+    </g>
+    <g id="row-4">
+      <rect x="32" y="672" width="1376" height="40" fill="#FCFCFD"/>
+      <line x1="32" y1="712" x2="1408" y2="712" stroke="#EAECF0"/>
+      <text x="48" y="698" class="t-cell">Samsung</text>
+      <text x="200" y="698" class="t-cell">Digital Creative</text>
+      <text x="360" y="698" class="t-cell">Daniel</text>
+      <text x="520" y="698" class="t-cell">To be billed</text>
+      <text x="640" y="698" class="t-cell">BRL</text>
+      <text x="800" y="698" class="t-cell t-right">21,256</text>
+      <text x="900" y="698" class="t-cell t-right">15,517</text>
+      <text x="980" y="698" class="t-cell t-right">27%</text>
+      <text x="1060" y="698" class="t-cell t-right">37%</text>
+      <text x="1160" y="698" class="t-cell t-right">8,000</text>
+      <text x="1380" y="698" class="t-cell t-right">13,256</text>
+    </g>
+    <g id="row-5">
+      <rect x="32" y="712" width="1376" height="40" fill="#FFFFFF"/>
+      <line x1="32" y1="752" x2="1408" y2="752" stroke="#EAECF0"/>
+      <text x="48" y="738" class="t-cell">Samsung</text>
+      <text x="200" y="738" class="t-cell">Billboard Production</text>
+      <text x="360" y="738" class="t-cell">Arthur</text>
+      <text x="520" y="738" class="t-cell">To be billed</text>
+      <text x="640" y="738" class="t-cell">BRL</text>
+      <text x="800" y="738" class="t-cell t-right">20,047</text>
+      <text x="900" y="738" class="t-cell t-right">9,624</text>
+      <text x="980" y="738" class="t-cell t-right">4%</text>
+      <text x="1060" y="738" class="t-cell t-right">24%</text>
+      <text x="1160" y="738" class="t-cell t-right">5,000</text>
+      <text x="1380" y="738" class="t-cell t-right">15,047</text>
+    </g>
+    <g id="row-6">
+      <rect x="32" y="752" width="1376" height="40" fill="#FCFCFD"/>
+      <line x1="32" y1="792" x2="1408" y2="792" stroke="#EAECF0"/>
+      <text x="48" y="778" class="t-cell">Nike</text>
+      <text x="200" y="778" class="t-cell">Retail Activation</text>
+      <text x="360" y="778" class="t-cell">Maya</text>
+      <text x="520" y="778" class="t-cell">New</text>
+      <text x="640" y="778" class="t-cell">USD</text>
+      <text x="800" y="778" class="t-cell t-right">38,200</text>
+      <text x="900" y="778" class="t-cell t-right">12,500</text>
+      <text x="980" y="778" class="t-cell t-right">67%</text>
+      <text x="1060" y="778" class="t-cell t-right">0%</text>
+      <text x="1160" y="778" class="t-cell t-right">0</text>
+      <text x="1380" y="778" class="t-cell t-right">38,200</text>
+    </g>
+    <g id="row-7">
+      <rect x="32" y="792" width="1376" height="40" fill="#FFFFFF"/>
+      <line x1="32" y1="832" x2="1408" y2="832" stroke="#EAECF0"/>
+      <text x="48" y="818" class="t-cell">Coca-Cola</text>
+      <text x="200" y="818" class="t-cell">Spring Promo</text>
+      <text x="360" y="818" class="t-cell">Sofia</text>
+      <text x="520" y="818" class="t-cell">To be billed</text>
+      <text x="640" y="818" class="t-cell">USD</text>
+      <text x="800" y="818" class="t-cell t-right">84,500</text>
+      <text x="900" y="818" class="t-cell t-right">51,200</text>
+      <text x="980" y="818" class="t-cell t-right">39%</text>
+      <text x="1060" y="818" class="t-cell t-right">25%</text>
+      <text x="1160" y="818" class="t-cell t-right">21,125</text>
+      <text x="1380" y="818" class="t-cell t-right">63,375</text>
+    </g>
+    <g id="row-8">
+      <rect x="32" y="832" width="1376" height="40" fill="#FCFCFD"/>
+      <line x1="32" y1="872" x2="1408" y2="872" stroke="#EAECF0"/>
+      <text x="48" y="858" class="t-cell">L&apos;Oreal</text>
+      <text x="200" y="858" class="t-cell">Q3 Digital</text>
+      <text x="360" y="858" class="t-cell">Daniel</text>
+      <text x="520" y="858" class="t-cell">New</text>
+      <text x="640" y="858" class="t-cell">EUR</text>
+      <text x="800" y="858" class="t-cell t-right">58,000</text>
+      <text x="900" y="858" class="t-cell t-right">32,400</text>
+      <text x="980" y="858" class="t-cell t-right">44%</text>
+      <text x="1060" y="858" class="t-cell t-right">0%</text>
+      <text x="1160" y="858" class="t-cell t-right">0</text>
+      <text x="1380" y="858" class="t-cell t-right">58,000</text>
+    </g>
+    <g id="row-9">
+      <rect x="32" y="872" width="1376" height="40" fill="#FFFFFF"/>
+      <line x1="32" y1="912" x2="1408" y2="912" stroke="#EAECF0"/>
+      <text x="48" y="898" class="t-cell">HP</text>
+      <text x="200" y="898" class="t-cell">Spring Launch</text>
+      <text x="360" y="898" class="t-cell">Rachel</text>
+      <text x="520" y="898" class="t-cell">To be billed</text>
+      <text x="640" y="898" class="t-cell">BRL</text>
+      <text x="800" y="898" class="t-cell t-right">72,500</text>
+      <text x="900" y="898" class="t-cell t-right">39,200</text>
+      <text x="980" y="898" class="t-cell t-right">46%</text>
+      <text x="1060" y="898" class="t-cell t-right">12%</text>
+      <text x="1160" y="898" class="t-cell t-right">8,700</text>
+      <text x="1380" y="898" class="t-cell t-right">63,800</text>
+    </g>
+    <g id="row-10">
+      <rect x="32" y="912" width="1376" height="40" fill="#FCFCFD"/>
+      <text x="48" y="938" class="t-cell">Nike</text>
+      <text x="200" y="938" class="t-cell">Holiday Edit</text>
+      <text x="360" y="938" class="t-cell">Arthur</text>
+      <text x="520" y="938" class="t-cell">Billed</text>
+      <text x="640" y="938" class="t-cell">USD</text>
+      <text x="800" y="938" class="t-cell t-right">31,400</text>
+      <text x="900" y="938" class="t-cell t-right">18,900</text>
+      <text x="980" y="938" class="t-cell t-right">40%</text>
+      <text x="1060" y="938" class="t-cell t-right">100%</text>
+      <text x="1160" y="938" class="t-cell t-right">31,400</text>
+      <text x="1380" y="938" class="t-cell t-right">0</text>
+    </g>
+    <rect x="32" y="504" width="1376" height="456" rx="10" stroke="#EAECF0" fill="none"/>
+  </g>
+
+  <text x="32" y="1000" class="t-sub">Imported from skills-workflow-demo (AgencyProfitabilityWorkspace). Ungroup to edit; swap in your UI kit components after import.</text>
+</svg>

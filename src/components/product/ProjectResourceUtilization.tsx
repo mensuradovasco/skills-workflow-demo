@@ -1,6 +1,6 @@
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faBriefcase, faChartColumn, faClock, faUsers } from "@fortawesome/free-solid-svg-icons";
-import type { CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { campaign, estimateTotals } from "../../data/cocaColaCampaign";
 
 const weeklyHours = [
@@ -35,6 +35,13 @@ function pct(value: number, max: number) {
   return max === 0 ? 0 : Math.max(4, Math.round((value / max) * 100));
 }
 
+function barStyle(value: number, max: number, index: number) {
+  return {
+    "--bar-delay": `${index * 80 + 120}ms`,
+    "--bar-height": `${pct(value, max)}%`,
+  } as CSSProperties;
+}
+
 function CompactComparisonBars({
   max,
   rows,
@@ -62,7 +69,42 @@ function CompactComparisonBars({
 
 export function ProjectResourceUtilization() {
   const plannedTotal = estimateTotals.hours;
-  const actualTotal = total(weeklyHours, "actual");
+  const finalActualTotal = total(weeklyHours, "actual");
+
+  const [progress, setProgress] = useState(0);
+  const rafRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const duration = 1800;
+    const start = performance.now();
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - start) / duration);
+      const eased = 1 - Math.pow(1 - t, 3);
+      setProgress(eased);
+      if (t < 1) {
+        rafRef.current = window.requestAnimationFrame(tick);
+      }
+    };
+    rafRef.current = window.requestAnimationFrame(tick);
+    return () => {
+      if (rafRef.current) window.cancelAnimationFrame(rafRef.current);
+    };
+  }, []);
+
+  const animatedWeeklyHours = weeklyHours.map((row) => ({
+    ...row,
+    actual: Math.round(row.actual * progress),
+  }));
+  const animatedRoleHours = roleHours.map((row) => ({
+    ...row,
+    actual: Math.round(row.actual * progress),
+  }));
+  const animatedDepartmentHours = departmentHours.map((row) => ({
+    ...row,
+    actual: Math.round(row.actual * progress),
+  }));
+
+  const actualTotal = Math.round(finalActualTotal * progress);
   const utilization = Math.round((actualTotal / plannedTotal) * 100);
   const variance = actualTotal - plannedTotal;
   const weekMax = Math.max(...weeklyHours.flatMap((row) => [row.planned, row.actual]));
@@ -87,10 +129,10 @@ export function ProjectResourceUtilization() {
           <small>Utilization %</small>
           <strong>{utilization}%</strong>
         </article>
-        <article>
+        <article className={`utilization-remaining ${variance <= 0 ? "is-positive" : "is-negative"}`}>
           <FontAwesomeIcon icon={faUsers} />
-          <small>Hours variance</small>
-          <strong>{variance > 0 ? "+" : ""}{formatHours(variance)}</strong>
+          <small>Hours remaining</small>
+          <strong>{formatHours(Math.abs(variance))}</strong>
         </article>
       </section>
 
@@ -106,11 +148,11 @@ export function ProjectResourceUtilization() {
           </div>
         </header>
         <div className="utilization-month-chart">
-          {weeklyHours.map((row, index) => (
+          {animatedWeeklyHours.map((row, index) => (
             <article key={row.week} style={{ "--bar-delay": `${index * 80 + 120}ms` } as CSSProperties}>
               <div className="utilization-month-bars">
-                <span className="planned" style={{ height: `${pct(row.planned, weekMax)}%` }}><em>{row.planned}</em></span>
-                <span className="actual" style={{ height: `${pct(row.actual, weekMax)}%` }}><em>{row.actual}</em></span>
+                <span className="planned" style={barStyle(row.planned, weekMax, index)}><em>{row.planned}</em></span>
+                <span className="actual" style={barStyle(row.actual, weekMax, index)}><em>{row.actual}</em></span>
               </div>
               <small>{row.week}</small>
             </article>
@@ -126,7 +168,7 @@ export function ProjectResourceUtilization() {
               <small>Contracted hours compared to consumed time</small>
             </div>
           </header>
-          <CompactComparisonBars max={roleMax} rows={roleHours} />
+          <CompactComparisonBars max={roleMax} rows={animatedRoleHours} />
         </div>
         <div className="utilization-chart-card">
           <header>
@@ -135,7 +177,7 @@ export function ProjectResourceUtilization() {
               <small>Where project hours are being consumed</small>
             </div>
           </header>
-          <CompactComparisonBars max={departmentMax} rows={departmentHours} />
+          <CompactComparisonBars max={departmentMax} rows={animatedDepartmentHours} />
         </div>
       </section>
     </div>

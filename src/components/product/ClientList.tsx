@@ -51,7 +51,7 @@ export function ClientList() {
       accent="#f0a24d"
       icon={faUsers}
       subtitle="All"
-      tabs={["FEED", "INFO", "PROJECTS", "CONTRACT"]}
+      tabs={[]}
       title="Clients"
     >
       <div className="client-list-page">

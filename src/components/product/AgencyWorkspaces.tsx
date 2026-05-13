@@ -6,9 +6,10 @@ import {
   faListCheck,
   faPeopleArrows,
 } from "@fortawesome/free-solid-svg-icons";
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { ListTable, type ListColumn } from "./DocumentFrame";
 import { WorkspaceFrame } from "./WorkspaceFrame";
+import { DSAnalyticsCard, DSPieChart } from "./DesignSystem";
 import { campaign } from "../../data/cocaColaCampaign";
 
 export function JobsWorkspace() {
@@ -17,9 +18,11 @@ export function JobsWorkspace() {
       accent="#f0c94e"
       icon={faListCheck}
       subtitle="All"
+      tabs={[]}
       title="Jobs"
     >
-      <WorkspaceListWithAnalytics charts={jobAnalytics} filterLabel="Working region" />
+      <WorkspaceFilterRow filterLabel="Working region" />
+      <WorkspaceSimpleCards cards={jobsSimpleCards} />
       <ListTable groups={agencyJobGroups} />
     </WorkspaceFrame>
   );
@@ -31,10 +34,11 @@ export function RequestsWorkspace() {
       accent="#5b8ed6"
       icon={faClipboardList}
       subtitle="All"
-      tabs={["INBOX", "TO QUALIFY", "ESTIMATES", "APPROVALS"]}
+      tabs={[]}
       title="Requests"
     >
-      <WorkspaceListWithAnalytics charts={requestAnalytics} filterLabel="Source" />
+      <WorkspaceFilterRow filterLabel="Source" />
+      <WorkspaceSimpleCards cards={requestsSimpleCards} />
       <ListTable groups={requestGroups} />
     </WorkspaceFrame>
   );
@@ -53,9 +57,10 @@ export function ProjectsWorkspace() {
       accent="#bdb2f4"
       icon={faFolderOpen}
       subtitle="All"
-      tabs={["KANBAN", "LIST", "CALENDAR", "GANTT", "ARCHIVE"]}
+      tabs={[]}
       title="Projects"
     >
+      <WorkspaceFilterRow filterLabel="Stage" />
       <div className="workspace-kanban">
         {columns.map(({ title, cards }, index) => (
           <section className="workspace-kanban-column" key={title}>
@@ -86,10 +91,11 @@ export function TasksWorkspace() {
       accent="#a7a16f"
       icon={faListCheck}
       subtitle="All"
-      tabs={["MY TASKS", "TEAM TASKS", "KANBAN", "CALENDAR"]}
+      tabs={[]}
       title="Tasks"
     >
-      <WorkspaceListWithAnalytics charts={taskAnalytics} filterLabel="Owner" />
+      <WorkspaceFilterRow filterLabel="Owner" />
+      <WorkspaceSimpleCards cards={tasksSimpleCards} />
       <ListTable groups={taskGroups} />
     </WorkspaceFrame>
   );
@@ -101,25 +107,27 @@ export function BudgetWorkspace() {
       accent="#9b877e"
       icon={faCalculator}
       subtitle="All"
-      tabs={["ESTIMATES", "APPROVALS", "BILLING", "TEMPLATES"]}
+      tabs={[]}
       title="Budgets"
     >
-      <WorkspaceListWithAnalytics charts={estimateAnalytics} filterLabel="Client" />
+      <WorkspaceFilterRow filterLabel="Client" />
+      <WorkspaceSimpleCards cards={budgetSimpleCards} />
       <ListTable groups={estimateGroups} />
     </WorkspaceFrame>
   );
 }
 
-export function ResourcesWorkspace() {
+export function ResourceMetricsWorkspace() {
   return (
     <WorkspaceFrame
       accent="#63c7c0"
       icon={faPeopleArrows}
       subtitle="All"
-      tabs={["ALLOCATION", "PEOPLE", "SKILLS", "CAPACITY"]}
-      title="Resources"
+      tabs={[]}
+      title="Resource metrics"
     >
-      <WorkspaceListWithAnalytics charts={resourceAnalytics} filterLabel="Department" />
+      <WorkspaceFilterRow filterLabel="Department" />
+      <WorkspaceSimpleCards cards={resourcesSimpleCards} />
       <ListTable groups={resourceGroups} />
     </WorkspaceFrame>
   );
@@ -127,6 +135,11 @@ export function ResourcesWorkspace() {
 
 export function AgencyProfitabilityWorkspace() {
   const [rows, setRows] = useState<ProfitRow[]>(initialProfitRows);
+  const [flashingId, setFlashingId] = useState<string | null>(null);
+  const [dateRange, setDateRange] = useState({ from: "2026-01-01", to: "2026-09-30" });
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+  const flashClearRef = useRef<number | null>(null);
+  const pickerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let timer: number;
@@ -134,6 +147,10 @@ export function AgencyProfitabilityWorkspace() {
       setRows((current) => {
         const billableIndex = current.findIndex((row) => row.stage === "To be billed");
         if (billableIndex === -1) return current;
+        const target = current[billableIndex];
+        setFlashingId(target.id);
+        if (flashClearRef.current) window.clearTimeout(flashClearRef.current);
+        flashClearRef.current = window.setTimeout(() => setFlashingId(null), 900);
         return current.map((row, index) => {
           if (index !== billableIndex) return row;
           return {
@@ -146,13 +163,70 @@ export function AgencyProfitabilityWorkspace() {
           };
         });
       });
-      timer = window.setTimeout(billNext, 900);
+      timer = window.setTimeout(billNext, 1100);
     };
-    timer = window.setTimeout(billNext, 350);
-    return () => window.clearTimeout(timer);
+    timer = window.setTimeout(billNext, 600);
+    return () => {
+      window.clearTimeout(timer);
+      if (flashClearRef.current) window.clearTimeout(flashClearRef.current);
+    };
   }, []);
 
-  const groups = useMemo(() => [{ label: "", rows }], [rows]);
+  useEffect(() => {
+    if (!isDatePickerOpen) return;
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!pickerRef.current?.contains(event.target as Node)) setIsDatePickerOpen(false);
+    };
+    window.addEventListener("pointerdown", handlePointerDown);
+    return () => window.removeEventListener("pointerdown", handlePointerDown);
+  }, [isDatePickerOpen]);
+
+  const filteredRows = useMemo(
+    () => rows.filter((row) => row.billingDate >= dateRange.from && row.billingDate <= dateRange.to),
+    [dateRange.from, dateRange.to, rows],
+  );
+  const groups = useMemo(() => [{ label: "", rows: filteredRows }], [filteredRows]);
+  const totals = useMemo(() => {
+    const income = filteredRows.reduce((sum, row) => sum + row.income, 0);
+    const cost = filteredRows.reduce((sum, row) => sum + row.cost, 0);
+    const billed = filteredRows.reduce((sum, row) => sum + row.billed, 0);
+    const margin = income > 0 ? Math.round(((income - cost) / income) * 100) : 0;
+    return { billed, income, margin };
+  }, [filteredRows]);
+
+  const profitCards = useMemo<ProfitabilityAnalyticsCard[]>(() => [
+    {
+      metricLabel: "Total margin",
+      kpiValue: <TweenNumber value={totals.margin} format={(value) => `${Math.round(value)}%`} />,
+      delta: "+8.5%",
+      sectionLabel: "Margin by client",
+      bars: [85, 69, 53, 40],
+      baseBars: [30, 26, 19, 14],
+      images: [clientAssets.cocaCola, clientAssets.samsung, clientAssets.loreal, clientAssets.hp],
+      labels: ["Coca-Cola", "Samsung", "L'Oreal", "HP"],
+      yAxis: ["45%", "30%", "15%", "0%"],
+    },
+    {
+      metricLabel: "Total revenue",
+      kpiValue: <TweenNumber value={totals.income} format={formatCompactEuro} />,
+      delta: "+12.4%",
+      sectionLabel: "Revenue by department",
+      bars: [93, 69, 55, 36],
+      baseBars: [33, 25, 22, 11],
+      labels: ["Creative", "Design", "Video", "Strategy"],
+      yAxis: ["€450k", "€300k", "€150k", "€0"],
+    },
+    {
+      metricLabel: "Total billing",
+      kpiValue: <TweenNumber value={totals.billed} format={formatCompactEuro} />,
+      delta: "+18.2%",
+      sectionLabel: "Billing forecast · next 4 months",
+      bars: [62, 72, 76, 76],
+      baseBars: [24, 28, 30, 30],
+      labels: ["Aug", "Sep", "Oct", "Nov"],
+      yAxis: ["€450k", "€300k", "€150k", "€0"],
+    },
+  ], [totals]);
 
   return (
     <WorkspaceFrame
@@ -163,55 +237,96 @@ export function AgencyProfitabilityWorkspace() {
       title="Profitability"
     >
       <div className="workspace-profitability">
-        <div className="profit-mini-cards">
-          <article><small>Agency margin</small><strong>38%</strong></article>
-          <article><small>Revenue forecast</small><strong>€1.42m</strong></article>
-          <article><small>Billing remaining</small><strong>€312k</strong></article>
+        <div className="profitability-date-filter" aria-label="Profitability date filter" ref={pickerRef}>
+          <span>Period</span>
+          <div className="profitability-date-picker-control">
+            <button
+              className="profitability-date-trigger"
+              type="button"
+              aria-expanded={isDatePickerOpen}
+              onClick={() => setIsDatePickerOpen((open) => !open)}
+            >
+              {formatDateRangeLabel(dateRange.from, dateRange.to)}
+            </button>
+            {isDatePickerOpen && (
+              <div className="profitability-date-popover">
+                <div className="profitability-date-popover-head">
+                  <strong>Date range</strong>
+                  <small>Filter profitability totals</small>
+                </div>
+                <div className="profitability-date-fields">
+                  <label>
+                    <span>From</span>
+                    <input
+                      type="date"
+                      value={dateRange.from}
+                      onChange={(event) => setDateRange((current) => ({ ...current, from: event.target.value }))}
+                    />
+                  </label>
+                  <label>
+                    <span>To</span>
+                    <input
+                      type="date"
+                      value={dateRange.to}
+                      onChange={(event) => setDateRange((current) => ({ ...current, to: event.target.value }))}
+                    />
+                  </label>
+                </div>
+              </div>
+            )}
+          </div>
+          <div className="profitability-date-presets" aria-label="Quick date ranges">
+            <button type="button" onClick={() => setDateRange({ from: "2026-01-01", to: "2026-09-30" })}>All</button>
+            <button type="button" onClick={() => setDateRange({ from: "2026-01-01", to: "2026-03-31" })}>Q1</button>
+            <button type="button" onClick={() => setDateRange({ from: "2026-04-01", to: "2026-06-30" })}>Q2</button>
+            <button type="button" onClick={() => setDateRange({ from: "2026-07-01", to: "2026-09-30" })}>Q3</button>
+          </div>
         </div>
-        <WorkspaceListWithAnalytics charts={profitAnalytics} filterLabel="Period" hideQuickFilters />
-        <ListTable columns={profitColumns} groups={groups} />
+        <ProfitabilityAnalyticsCards cards={profitCards} />
+        <ListTable
+          columns={profitColumns}
+          groups={groups}
+          rowKey={(row) => row.id}
+          rowClassName={(row) => (row.id === flashingId ? "row-billed-flash" : undefined)}
+        />
       </div>
     </WorkspaceFrame>
   );
 }
 
-type WorkspaceAnalytics = Array<{
-  bars: number[];
-  images?: string[];
-  labels?: string[];
-  title: string;
-  values?: number[];
-  yAxis?: string[];
-}>;
+type WorkspaceAnalyticsPieSlice = { color: string; label: string; value: number };
 
-function WorkspaceListWithAnalytics({
-  charts,
-  compact = false,
-  filterLabel,
-  hideQuickFilters = false,
-}: {
-  charts: WorkspaceAnalytics;
-  compact?: boolean;
-  filterLabel: string;
-  hideQuickFilters?: boolean;
-}) {
+type WorkspaceAnalyticsCard = {
+  bars?: number[];
+  baseBars?: number[];
+  delta?: string;
+  images?: string[];
+  kpiValue: ReactNode;
+  labels?: string[];
+  metricLabel: string;
+  pieSlices?: WorkspaceAnalyticsPieSlice[];
+  sectionLabel: string;
+  yAxis?: string[];
+};
+
+type ProfitabilityAnalyticsCard = WorkspaceAnalyticsCard;
+
+function WorkspaceAnalyticsCards({ cards }: { cards: WorkspaceAnalyticsCard[] }) {
   return (
-    <section className={compact ? "workspace-analytics compact" : "workspace-analytics"}>
-      {!hideQuickFilters && (
-        <div className="workspace-filter-row">
-          <button className="active">Export</button>
-          <button>Client</button>
-          <button>No mail</button>
-          <label>
-            <span>{filterLabel}</span>
-            <input placeholder="All" />
-          </label>
-        </div>
-      )}
-      <div className="workspace-chart-row">
-        {charts.map(({ bars, images, labels, title, values, yAxis }) => (
-          <article className="workspace-chart-card" key={title}>
-            <header>{title}</header>
+    <section className="profit-card2-row">
+      {cards.map(({ bars, baseBars, delta, images, kpiValue, labels, metricLabel, pieSlices, sectionLabel, yAxis }) => (
+        <article className="profit-card2" key={metricLabel}>
+          <div className="profit-card2-copy">
+            <div className="profit-card2-top">
+              <span>{metricLabel}</span>
+              {delta && <b>↗ {delta}</b>}
+            </div>
+            <strong>{kpiValue}</strong>
+            <small>{sectionLabel}</small>
+          </div>
+          {pieSlices ? (
+            <DSPieChart title="" slices={pieSlices} />
+          ) : (
             <div className="mini-bar-chart">
               {yAxis && (
                 <ul className="mini-bar-yaxis" aria-hidden="true">
@@ -220,24 +335,150 @@ function WorkspaceListWithAnalytics({
                   ))}
                 </ul>
               )}
-              {bars.map((height, index) => (
-                <div className="mini-bar-item" key={`${title}-${index}`}>
-                  <span
-                    title={`${values?.[index] ?? height} total jobs`}
-                    style={{ "--bar-height": `${height}%` } as CSSProperties}
-                  />
-                  {images?.[index] ? (
-                    <img src={images[index]} alt={labels?.[index] ?? ""} />
-                  ) : (
-                    <small>{labels?.[index] ?? index + 1}</small>
-                  )}
-                </div>
-              ))}
+              {(bars ?? []).map((height, index) => {
+                const baseHeight = baseBars?.[index];
+                const baseRatio = baseHeight !== undefined && height > 0
+                  ? Math.min(100, Math.max(0, (baseHeight / height) * 100))
+                  : null;
+                const style = { "--bar-height": `${height}%` } as CSSProperties;
+                if (baseRatio !== null) {
+                  (style as CSSProperties & Record<string, string>)["--bar-base-pct"] = `${baseRatio}%`;
+                }
+
+                return (
+                  <div className="mini-bar-item" key={`${metricLabel}-${index}`}>
+                    <span style={style} />
+                    {images?.[index] ? (
+                      <img src={images[index]} alt={labels?.[index] ?? ""} />
+                    ) : (
+                      <small>{labels?.[index] ?? index + 1}</small>
+                    )}
+                  </div>
+                );
+              })}
             </div>
-          </article>
-        ))}
-      </div>
+          )}
+        </article>
+      ))}
     </section>
+  );
+}
+
+type WorkspaceBarCard = {
+  kind: "bar";
+  title: string;
+  bars: number[];
+  labels: string[];
+  yAxis: string[];
+};
+
+type WorkspacePieCard = {
+  kind: "pie";
+  title: string;
+  slices: WorkspaceAnalyticsPieSlice[];
+  valueFormat?: "percent" | "euro";
+};
+
+type WorkspaceSimpleCard = WorkspaceBarCard | WorkspacePieCard;
+
+function WorkspaceSimpleCards({ cards }: { cards: WorkspaceSimpleCard[] }) {
+  return (
+    <section className="workspace-chart-row">
+      {cards.map((card) =>
+        card.kind === "pie" ? (
+          <DSPieChart key={card.title} title={card.title} slices={card.slices} valueFormat={card.valueFormat} />
+        ) : (
+          <DSAnalyticsCard key={card.title} title={card.title} bars={card.bars} labels={card.labels} yAxis={card.yAxis} />
+        ),
+      )}
+    </section>
+  );
+}
+
+const ProfitabilityAnalyticsCards = WorkspaceAnalyticsCards;
+
+function formatCompactEuro(value: number) {
+  if (value >= 1_000_000) return `€${(value / 1_000_000).toFixed(2)}m`;
+  if (value >= 1_000) return `€${Math.round(value / 1_000)}k`;
+  return `€${Math.round(value)}`;
+}
+
+function formatDateRangeLabel(from: string, to: string) {
+  const fromDate = new Date(`${from}T00:00:00`);
+  const toDate = new Date(`${to}T00:00:00`);
+  const sameYear = fromDate.getFullYear() === toDate.getFullYear();
+  const shortFormatter = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" });
+  const longFormatter = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" });
+  if (sameYear) return `${shortFormatter.format(fromDate)} - ${shortFormatter.format(toDate)}, ${toDate.getFullYear()}`;
+  return `${longFormatter.format(fromDate)} - ${longFormatter.format(toDate)}`;
+}
+
+function WorkspaceFilterRow({ filterLabel }: { filterLabel: string }) {
+  const [dateRange, setDateRange] = useState({ from: "2026-01-01", to: "2026-09-30" });
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+  const pickerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isDatePickerOpen) return;
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!pickerRef.current?.contains(event.target as Node)) setIsDatePickerOpen(false);
+    };
+    window.addEventListener("pointerdown", handlePointerDown);
+    return () => window.removeEventListener("pointerdown", handlePointerDown);
+  }, [isDatePickerOpen]);
+
+  return (
+    <div className="workspace-filter-row">
+      <div className="profitability-date-filter" aria-label="Date filter" ref={pickerRef}>
+        <span>Period</span>
+        <div className="profitability-date-picker-control">
+          <button
+            className="profitability-date-trigger"
+            type="button"
+            aria-expanded={isDatePickerOpen}
+            onClick={() => setIsDatePickerOpen((open) => !open)}
+          >
+            {formatDateRangeLabel(dateRange.from, dateRange.to)}
+          </button>
+          {isDatePickerOpen && (
+            <div className="profitability-date-popover">
+              <div className="profitability-date-popover-head">
+                <strong>Date range</strong>
+                <small>Filter list by date</small>
+              </div>
+              <div className="profitability-date-fields">
+                <label>
+                  <span>From</span>
+                  <input
+                    type="date"
+                    value={dateRange.from}
+                    onChange={(event) => setDateRange((current) => ({ ...current, from: event.target.value }))}
+                  />
+                </label>
+                <label>
+                  <span>To</span>
+                  <input
+                    type="date"
+                    value={dateRange.to}
+                    onChange={(event) => setDateRange((current) => ({ ...current, to: event.target.value }))}
+                  />
+                </label>
+              </div>
+            </div>
+          )}
+        </div>
+        <div className="profitability-date-presets" aria-label="Quick date ranges">
+          <button type="button" onClick={() => setDateRange({ from: "2026-01-01", to: "2026-09-30" })}>All</button>
+          <button type="button" onClick={() => setDateRange({ from: "2026-01-01", to: "2026-03-31" })}>Q1</button>
+          <button type="button" onClick={() => setDateRange({ from: "2026-04-01", to: "2026-06-30" })}>Q2</button>
+          <button type="button" onClick={() => setDateRange({ from: "2026-07-01", to: "2026-09-30" })}>Q3</button>
+        </div>
+      </div>
+      <label>
+        <span>{filterLabel}</span>
+        <input placeholder="All" />
+      </label>
+    </div>
   );
 }
 
@@ -269,75 +510,75 @@ function projectClientFor(card: string) {
   return campaign.client;
 }
 
-const jobAnalytics: WorkspaceAnalytics = [
+const COUNT_AXIS = ["100", "75", "50", "0"];
+const PERCENT_AXIS = ["100%", "75%", "50%", "0%"];
+const EURO_AXIS = ["€600k", "€400k", "€200k", "€0"];
+
+const jobsSimpleCards: WorkspaceSimpleCard[] = [
+  { kind: "bar", title: "Jobs by region", bars: [32, 48, 72, 58, 86], labels: ["EU", "UK", "BR", "US", "MEA"], yAxis: COUNT_AXIS },
   {
-    title: "Jobs by region",
-    bars: [32, 48, 72, 58, 86],
-    labels: ["EU", "UK", "BR", "US", "MEA"],
-    values: [18, 27, 41, 33, 49],
+    kind: "pie",
+    title: "Jobs by department",
+    slices: [
+      { label: "Creative", value: 38, color: "#9D87E0" },
+      { label: "Design", value: 27, color: "#5DBE8A" },
+      { label: "Video", value: 21, color: "#F1C338" },
+      { label: "Strategy", value: 14, color: "#4FC3E5" },
+    ],
   },
+  { kind: "bar", title: "Jobs per client", bars: [92, 66, 54, 39, 28], labels: ["Coca-Cola", "Samsung", "Nike", "L'Oreal", "HP"], yAxis: COUNT_AXIS },
+];
+
+const requestsSimpleCards: WorkspaceSimpleCard[] = [
+  { kind: "bar", title: "Requests by source", bars: [64, 42, 26, 18, 12], labels: ["Email", "Form", "Slack", "Phone", "Other"], yAxis: COUNT_AXIS },
+  { kind: "bar", title: "Requests by qualification stage", bars: [82, 55, 38, 21, 14], labels: ["New", "Triage", "Quote", "Sent", "Won"], yAxis: COUNT_AXIS },
   {
-    title: "Jobs by executor",
-    bars: [82, 74, 58, 46],
-    images: campaign.team.map((member) => member.avatar),
-    labels: campaign.team.map((member) => member.name),
-    values: [31, 28, 22, 17],
-  },
-  {
-    title: "Jobs per client",
-    bars: [92, 66, 54, 39, 28],
-    images: [clientAssets.cocaCola, clientAssets.samsung, clientAssets.nike, clientAssets.loreal, clientAssets.hp],
-    labels: ["Coca-Cola", "Samsung", "Nike", "L'Oreal", "HP"],
-    values: [46, 33, 27, 19, 14],
+    kind: "pie",
+    title: "Requests by client tier",
+    slices: [
+      { label: "Strategic", value: 42, color: "#5b8ed6" },
+      { label: "Growth", value: 28, color: "#F1C338" },
+      { label: "New", value: 18, color: "#5DBE8A" },
+      { label: "Pilot", value: 12, color: "#B14E5C" },
+    ],
   },
 ];
 
-const requestAnalytics: WorkspaceAnalytics = [
-  { title: "Requests by source", bars: [64, 42, 26, 18, 12] },
-  { title: "Requests by qualification stage", bars: [82, 55, 38, 21, 14] },
-  { title: "Requests by client tier", bars: [72, 36, 22, 12, 9] },
-];
-
-const taskAnalytics: WorkspaceAnalytics = [
-  { title: "Tasks by owner", bars: [72, 68, 51, 42, 28] },
-  { title: "Tasks by workflow stage", bars: [48, 76, 54, 31, 17] },
-  { title: "Tasks due this week", bars: [22, 34, 58, 44, 26, 18, 12] },
-];
-
-const estimateAnalytics: WorkspaceAnalytics = [
-  { title: "Estimates by approval stage", bars: [34, 58, 74, 22, 16] },
-  { title: "Estimate value by department", bars: [82, 61, 44, 39, 28, 19] },
-  { title: "Estimates per client", bars: [76, 48, 31, 24, 12] },
-];
-
-const resourceAnalytics: WorkspaceAnalytics = [
-  { title: "Capacity by department", bars: [78, 62, 49, 35, 22] },
-  { title: "Booked hours by skill", bars: [86, 73, 58, 42, 33, 18] },
-  { title: "Availability by week", bars: [28, 41, 54, 63, 47, 36] },
-];
-
-const profitAnalytics: WorkspaceAnalytics = [
+const tasksSimpleCards: WorkspaceSimpleCard[] = [
+  { kind: "bar", title: "Tasks by workflow stage", bars: [48, 76, 54, 31, 17], labels: ["To do", "In progress", "Review", "Blocked", "Done"], yAxis: COUNT_AXIS },
   {
-    title: "Margin by client",
-    bars: [85, 69, 53, 40],
-    images: [clientAssets.cocaCola, clientAssets.samsung, clientAssets.loreal, clientAssets.hp],
-    labels: ["Coca-Cola", "Samsung", "L'Oreal", "HP"],
-    values: [38, 31, 24, 18],
-    yAxis: ["45%", "30%", "15%", "0%"],
+    kind: "pie",
+    title: "Tasks by department",
+    slices: [
+      { label: "Creative", value: 34, color: "#9D87E0" },
+      { label: "Design", value: 28, color: "#5DBE8A" },
+      { label: "Video", value: 18, color: "#F1C338" },
+      { label: "Strategy", value: 12, color: "#4FC3E5" },
+      { label: "Account", value: 8, color: "#B14E5C" },
+    ],
   },
+  { kind: "bar", title: "Tasks due this week", bars: [22, 34, 58, 44, 26, 18, 12], labels: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"], yAxis: COUNT_AXIS },
+];
+
+const budgetSimpleCards: WorkspaceSimpleCard[] = [
+  { kind: "bar", title: "Estimates by approval stage", bars: [34, 58, 74, 22, 16], labels: ["Draft", "Sent", "Won", "Lost", "Hold"], yAxis: COUNT_AXIS },
+  { kind: "bar", title: "Estimate value by department", bars: [82, 61, 44, 39, 28, 19], labels: ["Creative", "Design", "Video", "Strategy", "Account", "Other"], yAxis: EURO_AXIS },
+  { kind: "bar", title: "Estimates per client", bars: [76, 48, 31, 24, 12], labels: ["Coca-Cola", "Samsung", "Nike", "L'Oreal", "HP"], yAxis: EURO_AXIS },
+];
+
+const resourcesSimpleCards: WorkspaceSimpleCard[] = [
+  { kind: "bar", title: "Capacity by department", bars: [78, 62, 49, 35, 22], labels: ["Creative", "Design", "Video", "Strategy", "Account"], yAxis: PERCENT_AXIS },
+  { kind: "bar", title: "Booked hours by skill", bars: [86, 73, 58, 42, 33, 18], labels: ["Photoshop", "After FX", "Figma", "Illustrator", "Premiere", "Maya"], yAxis: PERCENT_AXIS },
   {
-    title: "Revenue by department",
-    bars: [93, 69, 55, 36],
-    labels: ["Creative", "Design", "Video", "Strategy"],
-    values: [420, 312, 248, 164],
-    yAxis: ["€450k", "€300k", "€150k", "€0"],
-  },
-  {
-    title: "Forecast by month",
-    bars: [40, 53, 69, 80],
-    labels: ["Apr", "May", "Jun", "Jul"],
-    values: [180, 240, 310, 360],
-    yAxis: ["€450k", "€300k", "€150k", "€0"],
+    kind: "pie",
+    title: "Department mix",
+    slices: [
+      { label: "Creative", value: 34, color: "#9D87E0" },
+      { label: "Design", value: 26, color: "#5DBE8A" },
+      { label: "Video", value: 22, color: "#F1C338" },
+      { label: "Strategy", value: 12, color: "#4FC3E5" },
+      { label: "Account", value: 6, color: "#B14E5C" },
+    ],
   },
 ];
 
@@ -425,6 +666,7 @@ type ProfitCurrency = "USD" | "BRL" | "EUR";
 
 type ProfitRow = {
   id: string;
+  billingDate: string;
   client: string;
   clientLogo: string;
   project: string;
@@ -568,16 +810,16 @@ const profitColumns: ListColumn<ProfitRow>[] = [
 const team = campaign.team;
 
 const initialProfitRows: ProfitRow[] = [
-  { id: "cc-summer", client: "Coca-Cola", clientLogo: clientAssets.cocaCola, project: "Summer Campaign", responsibleName: team[0].name, responsibleAvatar: team[0].avatar, stage: "To be billed", currency: "USD", income: 391341, cost: 344381, marginPct: 12, billedPct: 51, billed: 200000, toBill: 191341 },
-  { id: "loreal-launch", client: "L'Oreal", clientLogo: clientAssets.loreal, project: "New Launch", responsibleName: team[3].name, responsibleAvatar: team[3].avatar, stage: "New", currency: "EUR", income: 276200, cost: 69050, marginPct: 75, billedPct: 54, billed: 150000, toBill: 126200 },
-  { id: "hp-3d", client: "HP", clientLogo: clientAssets.hp, project: "3D Production", responsibleName: team[1].name, responsibleAvatar: team[1].avatar, stage: "Billed", currency: "USD", income: 261000, cost: 146160, marginPct: 44, billedPct: 100, billed: 261000, toBill: 0 },
-  { id: "samsung-digital", client: "Samsung", clientLogo: clientAssets.samsung, project: "Digital Creative", responsibleName: team[2].name, responsibleAvatar: team[2].avatar, stage: "To be billed", currency: "BRL", income: 21256, cost: 15517, marginPct: 27, billedPct: 37, billed: 8000, toBill: 13256 },
-  { id: "samsung-billboard", client: "Samsung", clientLogo: clientAssets.samsung, project: "Billboard Production", responsibleName: team[1].name, responsibleAvatar: team[1].avatar, stage: "To be billed", currency: "BRL", income: 20047, cost: 9624, marginPct: 4, billedPct: 24, billed: 5000, toBill: 15047 },
-  { id: "nike-retail", client: "Nike", clientLogo: clientAssets.nike, project: "Retail Activation", responsibleName: team[4].name, responsibleAvatar: team[4].avatar, stage: "New", currency: "USD", income: 38200, cost: 12500, marginPct: 67, billedPct: 0, billed: 0, toBill: 38200 },
-  { id: "cc-spring", client: "Coca-Cola", clientLogo: clientAssets.cocaCola, project: "Spring Promo", responsibleName: team[3].name, responsibleAvatar: team[3].avatar, stage: "To be billed", currency: "USD", income: 84500, cost: 51200, marginPct: 39, billedPct: 25, billed: 21125, toBill: 63375 },
-  { id: "loreal-q3", client: "L'Oreal", clientLogo: clientAssets.loreal, project: "Q3 Digital", responsibleName: team[2].name, responsibleAvatar: team[2].avatar, stage: "New", currency: "EUR", income: 58000, cost: 32400, marginPct: 44, billedPct: 0, billed: 0, toBill: 58000 },
-  { id: "hp-spring", client: "HP", clientLogo: clientAssets.hp, project: "Spring Launch", responsibleName: team[0].name, responsibleAvatar: team[0].avatar, stage: "To be billed", currency: "BRL", income: 72500, cost: 39200, marginPct: 46, billedPct: 12, billed: 8700, toBill: 63800 },
-  { id: "nike-holiday", client: "Nike", clientLogo: clientAssets.nike, project: "Holiday Edit", responsibleName: team[1].name, responsibleAvatar: team[1].avatar, stage: "Billed", currency: "USD", income: 31400, cost: 18900, marginPct: 40, billedPct: 100, billed: 31400, toBill: 0 },
+  { id: "cc-summer", billingDate: "2026-01-16", client: "Coca-Cola", clientLogo: clientAssets.cocaCola, project: "Summer Campaign", responsibleName: team[0].name, responsibleAvatar: team[0].avatar, stage: "To be billed", currency: "USD", income: 391341, cost: 344381, marginPct: 12, billedPct: 51, billed: 200000, toBill: 191341 },
+  { id: "loreal-launch", billingDate: "2026-01-08", client: "L'Oreal", clientLogo: clientAssets.loreal, project: "New Launch", responsibleName: team[3].name, responsibleAvatar: team[3].avatar, stage: "New", currency: "EUR", income: 276200, cost: 69050, marginPct: 75, billedPct: 54, billed: 150000, toBill: 126200 },
+  { id: "hp-3d", billingDate: "2026-01-26", client: "HP", clientLogo: clientAssets.hp, project: "3D Production", responsibleName: team[1].name, responsibleAvatar: team[1].avatar, stage: "Billed", currency: "USD", income: 261000, cost: 146160, marginPct: 44, billedPct: 100, billed: 261000, toBill: 0 },
+  { id: "samsung-digital", billingDate: "2026-02-05", client: "Samsung", clientLogo: clientAssets.samsung, project: "Digital Creative", responsibleName: team[2].name, responsibleAvatar: team[2].avatar, stage: "To be billed", currency: "BRL", income: 21256, cost: 15517, marginPct: 27, billedPct: 37, billed: 8000, toBill: 13256 },
+  { id: "samsung-billboard", billingDate: "2026-04-18", client: "Samsung", clientLogo: clientAssets.samsung, project: "Billboard Production", responsibleName: team[1].name, responsibleAvatar: team[1].avatar, stage: "To be billed", currency: "BRL", income: 20047, cost: 9624, marginPct: 4, billedPct: 24, billed: 5000, toBill: 15047 },
+  { id: "nike-retail", billingDate: "2026-05-26", client: "Nike", clientLogo: clientAssets.nike, project: "Retail Activation", responsibleName: team[4].name, responsibleAvatar: team[4].avatar, stage: "New", currency: "USD", income: 38200, cost: 12500, marginPct: 67, billedPct: 0, billed: 0, toBill: 38200 },
+  { id: "cc-spring", billingDate: "2026-06-06", client: "Coca-Cola", clientLogo: clientAssets.cocaCola, project: "Spring Promo", responsibleName: team[3].name, responsibleAvatar: team[3].avatar, stage: "To be billed", currency: "USD", income: 84500, cost: 51200, marginPct: 39, billedPct: 25, billed: 21125, toBill: 63375 },
+  { id: "loreal-q3", billingDate: "2026-07-15", client: "L'Oreal", clientLogo: clientAssets.loreal, project: "Q3 Digital", responsibleName: team[2].name, responsibleAvatar: team[2].avatar, stage: "New", currency: "EUR", income: 58000, cost: 32400, marginPct: 44, billedPct: 0, billed: 0, toBill: 58000 },
+  { id: "hp-spring", billingDate: "2026-08-22", client: "HP", clientLogo: clientAssets.hp, project: "Spring Launch", responsibleName: team[0].name, responsibleAvatar: team[0].avatar, stage: "To be billed", currency: "BRL", income: 72500, cost: 39200, marginPct: 46, billedPct: 12, billed: 8700, toBill: 63800 },
+  { id: "nike-holiday", billingDate: "2026-09-28", client: "Nike", clientLogo: clientAssets.nike, project: "Holiday Edit", responsibleName: team[1].name, responsibleAvatar: team[1].avatar, stage: "Billed", currency: "USD", income: 31400, cost: 18900, marginPct: 40, billedPct: 100, billed: 31400, toBill: 0 },
 ];
 
 const taskGroups = [

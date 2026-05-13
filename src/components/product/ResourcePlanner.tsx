@@ -32,7 +32,8 @@ import { WorkspaceFrame } from "./WorkspaceFrame";
 
 const BILLBOARD_IMAGE = "https://images.unsplash.com/photo-1554866585-cd94860890b7?auto=format&fit=crop&w=900&q=80";
 const BILLBOARD_TAGS = ["3D", "billboard", "Coca-Cola"];
-const FINAL_PROOF_COMMENT_MS = 1500;
+const THUMBNAIL_PRESS_MS = 80;
+const THUMBNAIL_RELEASE_MS = THUMBNAIL_PRESS_MS + 540;
 const APPROVE_AT_MS = 1500;
 const CLOSE_PREVIEW_AT_MS = 2700;
 
@@ -152,6 +153,7 @@ export function ResourcePlanner({ onProjectNavigate }: ResourcePlannerProps) {
   const ghostRef = useRef<HTMLSpanElement | null>(null);
   const rowsRef = useRef<HTMLDivElement | null>(null);
   const automationTimers = useRef<number[]>([]);
+  const proofSequenceRunningRef = useRef(false);
 
   useLayoutEffect(() => {
     if (resourceSearchPhase !== "dragging") {
@@ -222,6 +224,7 @@ export function ResourcePlanner({ onProjectNavigate }: ResourcePlannerProps) {
     const unmountTimer = window.setTimeout(() => {
       setAnnotationOpen(false);
       setAnnotationClosing(false);
+      proofSequenceRunningRef.current = false;
     }, 360);
     automationTimers.current.push(unmountTimer);
   };
@@ -236,14 +239,26 @@ export function ResourcePlanner({ onProjectNavigate }: ResourcePlannerProps) {
     setProofAnimationPhase("preview");
     setThumbnailClicking(false);
     setAnnotationClosing(false);
+    proofSequenceRunningRef.current = false;
+  };
+
+  const runProofAnnotationSequence = () => {
+    proofSequenceRunningRef.current = true;
+    setAnnotationOpen(true);
+    setAnnotationStage("review");
+    setProofAnimationPhase("preview");
+    const phaseTimer = window.setTimeout(() => {
+      setProofAnimationPhase("comments");
+      const approveTimer = window.setTimeout(() => setAnnotationStage("billing"), APPROVE_AT_MS);
+      const closeTimer = window.setTimeout(closeAnnotationAnimated, CLOSE_PREVIEW_AT_MS);
+      automationTimers.current.push(approveTimer, closeTimer);
+    }, 16);
+    automationTimers.current.push(phaseTimer);
   };
 
   const runGuidedThumbnailOpen = () => {
-    // Play just the thumbnail click visual; the annotation modal opens in
-    // the next guided step so the first comment appears right after the click,
-    // matching the manual thumbnail click timing.
-    const clickTimer = window.setTimeout(() => setThumbnailClicking(true), 520);
-    const releaseTimer = window.setTimeout(() => setThumbnailClicking(false), 1000);
+    const clickTimer = window.setTimeout(() => setThumbnailClicking(true), THUMBNAIL_PRESS_MS);
+    const releaseTimer = window.setTimeout(() => setThumbnailClicking(false), THUMBNAIL_RELEASE_MS);
     automationTimers.current.push(clickTimer, releaseTimer);
   };
 
@@ -367,31 +382,25 @@ export function ResourcePlanner({ onProjectNavigate }: ResourcePlannerProps) {
         setThumbnailClicking(false);
         setAutoApproveProof(false);
         runGuidedThumbnailOpen();
+        const previewTimer = window.setTimeout(runProofAnnotationSequence, THUMBNAIL_PRESS_MS + 260);
+        automationTimers.current.push(previewTimer);
         return;
       }
 
       if (stepId === "annotate-asset") {
+        if (proofSequenceRunningRef.current) {
+          setOpenJob("Create 3D asset");
+          setModalTab("FEED");
+          setTaskAnimating(false);
+          setThumbnailClicking(false);
+          return;
+        }
         stopResourceAnimation();
         setOpenJob("Create 3D asset");
         setModalTab("FEED");
-        setAnnotationOpen(true);
-        setAnnotationStage("review");
-        // Reset to "preview" first so conditionally-rendered comments/pins
-        // unmount, then flip to "comments" on the next frame so they remount
-        // fresh and CSS animations replay from t=0.
-        setProofAnimationPhase("preview");
         setTaskAnimating(false);
         setThumbnailClicking(false);
-        const phaseTimer = window.setTimeout(() => {
-          setProofAnimationPhase("comments");
-          // Schedule the approve flip from the SAME moment the comments mount,
-          // so comment 2 / pin 2 / Client annotation / approve pulse all hit
-          // simultaneously instead of drifting due to React render delay.
-          const approveTimer = window.setTimeout(() => setAnnotationStage("billing"), APPROVE_AT_MS);
-          const closeTimer = window.setTimeout(closeAnnotationAnimated, CLOSE_PREVIEW_AT_MS);
-          automationTimers.current.push(approveTimer, closeTimer);
-        }, 16);
-        automationTimers.current.push(phaseTimer);
+        runProofAnnotationSequence();
         return;
       }
 
@@ -425,18 +434,7 @@ export function ResourcePlanner({ onProjectNavigate }: ResourcePlannerProps) {
   const openAnnotationFromFeed = () => {
     clearAutomationTimers();
     setThumbnailClicking(false);
-    setAnnotationOpen(true);
-    setAnnotationStage("review");
-    // Same two-step phase shift as the guided demo so the inner elements
-    // mount fresh and the comments/pins/approval pulse stay in sync.
-    setProofAnimationPhase("preview");
-    const phaseTimer = window.setTimeout(() => {
-      setProofAnimationPhase("comments");
-      const approveTimer = window.setTimeout(() => setAnnotationStage("billing"), APPROVE_AT_MS);
-      const closeTimer = window.setTimeout(closeAnnotationAnimated, CLOSE_PREVIEW_AT_MS);
-      automationTimers.current.push(approveTimer, closeTimer);
-    }, 16);
-    automationTimers.current.push(phaseTimer);
+    runProofAnnotationSequence();
   };
 
   useEffect(() => () => clearAutomationTimers(), []);

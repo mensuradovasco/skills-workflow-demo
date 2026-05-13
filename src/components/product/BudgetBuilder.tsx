@@ -115,7 +115,42 @@ export function BudgetBuilder({ estimateStatus = "ready", feedStageActionLabel, 
   });
   const [openDeliverables, setOpenDeliverables] = useState<Record<string, boolean>>({
     "Landing Page": true,
+    "15s Video": true,
+    "3D Digital Banner": true,
   });
+
+  const buildAnimStartedRef = useRef(false);
+  useEffect(() => {
+    if (buildAnimStartedRef.current) return;
+    buildAnimStartedRef.current = true;
+
+    const allRows = resourceGroups.flatMap((group) => group.rows.map((row) => ({ order: row.order, target: row.hours })));
+    if (allRows.length === 0) return;
+
+    const cascade = 140;
+    const rowDuration = 880;
+    const totalDuration = (allRows.length - 1) * cascade + rowDuration;
+
+    setHoursByOrder(Object.fromEntries(allRows.map(({ order }) => [order, 0])));
+
+    const startTime = performance.now();
+    const interval = window.setInterval(() => {
+      const elapsed = performance.now() - startTime;
+      const next: Record<string, number> = {};
+      for (let i = 0; i < allRows.length; i += 1) {
+        const { order, target } = allRows[i];
+        const rowStart = i * cascade;
+        const t = Math.max(0, Math.min(1, (elapsed - rowStart) / rowDuration));
+        const eased = 1 - Math.pow(1 - t, 3);
+        next[order] = Math.round(target * eased);
+      }
+      setHoursByOrder(next);
+      if (elapsed >= totalDuration) {
+        window.clearInterval(interval);
+        setHoursByOrder({});
+      }
+    }, 32);
+  }, []);
   const tabs = ["FEED", "CHECKLIST", "INFO", "QUOTES", "ESTIMATE BUILDER", "EXPENSES", "PROFITABILITY"];
   const hoursFor = (order: string, fallback: number) => hoursByOrder[order] ?? fallback;
   const totalResourceCostForQuote = (deliverable: string) =>

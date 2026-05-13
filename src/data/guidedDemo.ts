@@ -136,7 +136,7 @@ export const guidedDemoSteps: GuidedDemoStep[] = [
     placement: "left",
   },
   {
-    autoAdvanceMs: 1100,
+    autoAdvanceMs: 860,
     id: "client-side-review",
     nextAdvancesOnly: true,
     railStep: "proofing",
@@ -149,7 +149,7 @@ export const guidedDemoSteps: GuidedDemoStep[] = [
     placement: "left",
   },
   {
-    autoAdvanceMs: 5200,
+    autoAdvanceMs: 3600,
     id: "annotate-asset",
     nextAdvancesOnly: true,
     railStep: "proofing",

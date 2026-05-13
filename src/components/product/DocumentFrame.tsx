@@ -4,7 +4,6 @@ import {
   faCheck,
   faClipboardCheck,
   faCommentDots,
-  faCircle,
   faEllipsisVertical,
   faFileImage,
   faFileLines,
@@ -299,80 +298,14 @@ export function FeedDocumentView({
   return (
     <div className={`document-feed${feedTaskAnimating ? " feed-task-animating" : ""}`}>
       <main className="feed-main">
-        <section className="feed-description">
-          <header>
-            <span><FontAwesomeIcon icon={faFileLines} /></span>
-            <strong>Description</strong>
-          </header>
-          <div className="feed-version-control" aria-label="Description version">
-            <div>
-              <strong>Rachel</strong>
-              <small>{feedStageTimestamp}</small>
-            </div>
-            <img className="avatar photo" src={requester.avatar} alt="Rachel" />
-          </div>
-          <div className="feed-description-box">
-            <div className="feed-description-content">
-              {feedDescriptionContent ?? (
-                <>
-                  <p>Client request: create key assets for a Coca-Cola summer campaign.</p>
-                  <p>
-                    <strong>Scope:</strong><br />
-                    Website Landing Page<br />
-                    15s Video<br />
-                    3D Digital Banner
-                  </p>
-                  <p>
-                    <strong>Timeline:</strong><br />
-                    Concept, Website, Video, 3D Banner, Delivery
-                  </p>
-                  <p>
-                    <strong>Cost:</strong><br />
-                    €15,000 approved
-                  </p>
-                  <div className="feed-documents" data-tour-anchor="project-documents">
-                    <article>
-                      <img
-                        src="https://images.unsplash.com/photo-1554866585-cd94860890b7?auto=format&fit=crop&w=360&q=80"
-                        alt="Coca-Cola creative preview"
-                      />
-                      <div>
-                        <strong>Summer asset reference</strong>
-                        <small>Image</small>
-                      </div>
-                    </article>
-                    <article>
-                      <span><FontAwesomeIcon icon={faFileImage} /></span>
-                      <div>
-                        <strong>Creative Brief</strong>
-                        <small>Creative brief</small>
-                      </div>
-                    </article>
-                  </div>
-                </>
-              )}
-            </div>
-            {!feedHideChecklist && (
-              <div className="feed-checklist">
-                <div className="feed-check-row head">
-                  <span>Description</span>
-                  <span>Date</span>
-                  <span>Done</span>
-                </div>
-                {checklist.map((item, index) => (
-                  <div className={index === 1 ? "feed-check-row selected" : "feed-check-row"} key={item}>
-                    <span>{item}</span>
-                    <span>04 Jun 2026</span>
-                    <span>
-                      <FontAwesomeIcon icon={faCheck} />
-                      {index < 3 && <img className="avatar photo" src={campaign.team[index % campaign.team.length].avatar} alt="" />}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </section>
+        <FeedDescription
+          checklist={checklist}
+          feedDescriptionContent={feedDescriptionContent}
+          feedHideChecklist={feedHideChecklist}
+          feedStageTimestamp={feedStageTimestamp}
+          requesterAvatar={requester.avatar}
+          requesterName="Rachel"
+        />
 
         <section className="feed-composer">
           <div
@@ -467,6 +400,109 @@ export function FeedDocumentView({
         </section>
       </aside>
     </div>
+  );
+}
+
+export function FeedDescription({
+  checklist,
+  feedDescriptionContent,
+  feedHideChecklist = false,
+  feedStageTimestamp = "04 Jun 2026, 13:31",
+  requesterAvatar,
+  requesterName = "Rachel",
+}: {
+  checklist?: string[];
+  feedDescriptionContent?: ReactNode;
+  feedHideChecklist?: boolean;
+  feedStageTimestamp?: string;
+  requesterAvatar?: string;
+  requesterName?: string;
+}) {
+  const requester = campaign.team[0];
+  const avatar = requesterAvatar ?? requester.avatar;
+  const items = checklist ?? [
+    "Client Request / Brief",
+    "Estimate / Budget",
+    "Project Plan",
+    "Creative Brief",
+    "Delivery List",
+  ];
+
+  return (
+    <section className="feed-description">
+      <header>
+        <span><FontAwesomeIcon icon={faFileLines} /></span>
+        <strong>Description</strong>
+      </header>
+      <div className="feed-version-control" aria-label="Description version">
+        <div>
+          <strong>{requesterName}</strong>
+          <small>{feedStageTimestamp}</small>
+        </div>
+        <img className="avatar photo" src={avatar} alt={requesterName} />
+      </div>
+      <div className="feed-description-box">
+        <div className="feed-description-content">
+          {feedDescriptionContent ?? (
+            <>
+              <p>Client request: create key assets for a Coca-Cola summer campaign.</p>
+              <p>
+                <strong>Scope:</strong><br />
+                Website Landing Page<br />
+                15s Video<br />
+                3D Digital Banner
+              </p>
+              <p>
+                <strong>Timeline:</strong><br />
+                Concept, Website, Video, 3D Banner, Delivery
+              </p>
+              <p>
+                <strong>Cost:</strong><br />
+                €15,000 approved
+              </p>
+              <div className="feed-documents" data-tour-anchor="project-documents">
+                <article>
+                  <img
+                    src="https://images.unsplash.com/photo-1554866585-cd94860890b7?auto=format&fit=crop&w=360&q=80"
+                    alt="Coca-Cola creative preview"
+                  />
+                  <div>
+                    <strong>Summer asset reference</strong>
+                    <small>Image</small>
+                  </div>
+                </article>
+                <article>
+                  <span><FontAwesomeIcon icon={faFileImage} /></span>
+                  <div>
+                    <strong>Creative Brief</strong>
+                    <small>Creative brief</small>
+                  </div>
+                </article>
+              </div>
+            </>
+          )}
+        </div>
+        {!feedHideChecklist && (
+          <div className="feed-checklist">
+            <div className="feed-check-row head">
+              <span>Description</span>
+              <span>Date</span>
+              <span>Done</span>
+            </div>
+            {items.map((item, index) => (
+              <div className={index === 1 ? "feed-check-row selected" : "feed-check-row"} key={item}>
+                <span>{item}</span>
+                <span>04 Jun 2026</span>
+                <span>
+                  <FontAwesomeIcon icon={faCheck} />
+                  {index < 3 && <img className="avatar photo" src={campaign.team[index % campaign.team.length].avatar} alt="" />}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
   );
 }
 
@@ -616,44 +652,80 @@ function InfoListView({ tab }: { tab: string }) {
   );
 }
 
+const KANBAN_COLUMN_DEFS = [
+  { title: "Briefing", tone: "blue", stages: ["Approved"] },
+  { title: "In progress", tone: "gold", stages: ["In progress"] },
+  { title: "Internal review", tone: "green", stages: ["Internal review", "Queued"] },
+  { title: "Client approval", tone: "red", stages: ["Client approval", "Ready for delivery"] },
+] as const;
+
 function ProjectKanbanView() {
-  const columns = [
-    {
-      title: "Briefing",
-      tone: "blue",
-      cards: projectWorkItems.filter((item) => item.stage === "Approved"),
-    },
-    {
-      title: "In progress",
-      tone: "gold",
-      cards: projectWorkItems.filter((item) => item.stage === "In progress"),
-    },
-    {
-      title: "Internal review",
-      tone: "green",
-      cards: projectWorkItems.filter((item) => item.stage === "Internal review" || item.stage === "Queued"),
-    },
-    {
-      title: "Client approval",
-      tone: "red",
-      cards: projectWorkItems.filter((item) => item.stage === "Client approval" || item.stage === "Ready for delivery"),
-    },
-  ];
+  const [cardColumns, setCardColumns] = useState<Record<string, string>>(() => {
+    const map: Record<string, string> = {};
+    for (const card of projectWorkItems) {
+      const column = KANBAN_COLUMN_DEFS.find((c) => (c.stages as ReadonlyArray<string>).includes(card.stage));
+      map[card.reference] = column?.title ?? KANBAN_COLUMN_DEFS[0].title;
+    }
+    return map;
+  });
+  const [draggingRef, setDraggingRef] = useState<string | null>(null);
+  const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
+
+  const handleDragStart = (reference: string) => (event: React.DragEvent<HTMLElement>) => {
+    setDraggingRef(reference);
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", reference);
+  };
+  const handleDragEnd = () => {
+    setDraggingRef(null);
+    setDragOverColumn(null);
+  };
+  const handleColumnDragOver = (title: string) => (event: React.DragEvent<HTMLElement>) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+    if (dragOverColumn !== title) setDragOverColumn(title);
+  };
+  const handleColumnDrop = (title: string) => (event: React.DragEvent<HTMLElement>) => {
+    event.preventDefault();
+    const reference = event.dataTransfer.getData("text/plain") || draggingRef;
+    if (!reference) return;
+    setCardColumns((current) => (current[reference] === title ? current : { ...current, [reference]: title }));
+    setDraggingRef(null);
+    setDragOverColumn(null);
+  };
 
   return (
     <div className="document-kanban">
-      {columns.map((column) => (
-        <section className="kanban-column" key={column.title}>
-          <header>
-            <span className={column.tone} />
-            <strong>{column.title}</strong>
-            <small>{column.cards.length}</small>
-          </header>
-          {column.cards.map((card, index) => (
-            <KanbanWorkCard card={card} index={index} key={card.reference} />
-          ))}
-        </section>
-      ))}
+      {KANBAN_COLUMN_DEFS.map((column) => {
+        const cards = projectWorkItems.filter((item) => cardColumns[item.reference] === column.title);
+        const isDropTarget = dragOverColumn === column.title;
+        return (
+          <section
+            className={`kanban-column${isDropTarget ? " is-drop-target" : ""}`}
+            key={column.title}
+            onDragOver={handleColumnDragOver(column.title)}
+            onDragLeave={() => setDragOverColumn((current) => (current === column.title ? null : current))}
+            onDrop={handleColumnDrop(column.title)}
+          >
+            <header>
+              <span className={column.tone} />
+              <strong>{column.title}</strong>
+              <small>{cards.length}</small>
+            </header>
+            {cards.map((card, index) => (
+              <KanbanWorkCard
+                card={card}
+                index={index}
+                key={card.reference}
+                draggable
+                isDragging={draggingRef === card.reference}
+                onDragStart={handleDragStart(card.reference)}
+                onDragEnd={handleDragEnd}
+              />
+            ))}
+          </section>
+        );
+      })}
     </div>
   );
 }
@@ -679,10 +751,29 @@ type KanbanWorkCardData = {
   tags?: ReadonlyArray<string>;
 };
 
-export function KanbanWorkCard({ card, index }: { card: KanbanWorkCardData; index: number }) {
+export function KanbanWorkCard({
+  card,
+  index,
+  draggable,
+  isDragging,
+  onDragStart,
+  onDragEnd,
+}: {
+  card: KanbanWorkCardData;
+  index: number;
+  draggable?: boolean;
+  isDragging?: boolean;
+  onDragStart?: (event: React.DragEvent<HTMLElement>) => void;
+  onDragEnd?: (event: React.DragEvent<HTMLElement>) => void;
+}) {
   const parent = findParentName(card.wbs);
   return (
-    <article className="kanban-card">
+    <article
+      className={`kanban-card${isDragging ? " is-dragging" : ""}`}
+      draggable={draggable}
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
+    >
       <div className="kanban-card-strip">
         <span><FontAwesomeIcon icon={faListCheck} /></span>
         <strong>{card.name}</strong>
@@ -693,10 +784,6 @@ export function KanbanWorkCard({ card, index }: { card: KanbanWorkCardData; inde
           {card.tags?.map((tag) => (
             <span className="kanban-card-tag" key={tag}>{tag}</span>
           ))}
-        </div>
-        <div className="kanban-card-status">
-          <FontAwesomeIcon icon={faCircle} />
-          <span>{card.stage}</span>
         </div>
         <div className="kanban-card-meta">
           <KanbanDateRange start={card.start} end={card.end} progress={parseProgress(card.progress)} />
@@ -818,6 +905,8 @@ type ListGroup<T> = { label: string; rows: T[]; tone?: string };
 type ListTableProps<T> = {
   columns?: ListColumn<T>[];
   groups: Array<ListGroup<T>>;
+  rowClassName?: (row: T, index: number) => string | undefined;
+  rowKey?: (row: T, index: number) => string;
 };
 
 const defaultListColumns: ListColumn<ListRow>[] = [
@@ -842,9 +931,9 @@ const defaultListColumns: ListColumn<ListRow>[] = [
   { key: "priority", label: "Priority", width: "minmax(110px, 0.7fr)", render: (row) => <b className={`priority ${row.priority ?? "Medium"}`}>{row.priority ?? "Medium"}</b> },
 ];
 
-export function ListTable(props: { groups: Array<ListGroup<ListRow>> }): ReactElement;
-export function ListTable<T>(props: { columns: ListColumn<T>[]; groups: Array<ListGroup<T>> }): ReactElement;
-export function ListTable<T = ListRow>({ columns, groups }: ListTableProps<T>) {
+export function ListTable(props: { groups: Array<ListGroup<ListRow>>; rowClassName?: (row: ListRow, index: number) => string | undefined; rowKey?: (row: ListRow, index: number) => string }): ReactElement;
+export function ListTable<T>(props: { columns: ListColumn<T>[]; groups: Array<ListGroup<T>>; rowClassName?: (row: T, index: number) => string | undefined; rowKey?: (row: T, index: number) => string }): ReactElement;
+export function ListTable<T = ListRow>({ columns, groups, rowClassName, rowKey }: ListTableProps<T>) {
   const cols = (columns ?? (defaultListColumns as unknown as ListColumn<T>[]));
   const gridTemplate = cols.map((c) => c.width ?? "minmax(0, 1fr)").join(" ");
   const rowStyle = { "--doc-grid-columns": gridTemplate } as CSSProperties;
@@ -864,8 +953,11 @@ export function ListTable<T = ListRow>({ columns, groups }: ListTableProps<T>) {
               {group.label}
             </div>
           )}
-          {group.rows.map((row, rowIndex) => (
-            <div className="doc-row" key={`${group.label}-${rowIndex}`} style={rowStyle}>
+          {group.rows.map((row, rowIndex) => {
+            const extra = rowClassName?.(row, rowIndex);
+            const key = rowKey ? rowKey(row, rowIndex) : `${group.label}-${rowIndex}`;
+            return (
+            <div className={`doc-row${extra ? ` ${extra}` : ""}`} key={key} style={rowStyle}>
               {cols.map((c) => (
                 <span
                   key={c.key}
@@ -875,7 +967,8 @@ export function ListTable<T = ListRow>({ columns, groups }: ListTableProps<T>) {
                 </span>
               ))}
             </div>
-          ))}
+            );
+          })}
         </div>
       ))}
     </div>
