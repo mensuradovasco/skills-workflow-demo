@@ -7,8 +7,10 @@ type AppShellProps = {
   guidedActive: boolean;
   onStepChange: (step: DemoStep) => void;
   onOpenDesignSystem?: () => void;
+  onOpenDemoApp?: () => void;
   hideDemoChrome?: boolean;
   embedMode?: boolean;
+  demoOnlyMode?: boolean;
 };
 
 const marketingNavItems = ["Product", "Solutions", "Resources", "Pricing", "Contact"];
@@ -28,7 +30,7 @@ const stages = visibleStageIds
   .map((id) => demoSteps.find((step) => step.id === id))
   .filter((step): step is (typeof demoSteps)[number] => Boolean(step));
 
-export function AppShell({ activeStep, children, guidedActive, onStepChange, onOpenDesignSystem, hideDemoChrome = false, embedMode = false }: AppShellProps) {
+export function AppShell({ activeStep, children, guidedActive, onStepChange, onOpenDesignSystem, onOpenDemoApp, hideDemoChrome = false, embedMode = false, demoOnlyMode = false }: AppShellProps) {
   const activeIndex = stages.findIndex((step) => step.id === activeStep);
   const shellRef = useRef<HTMLDivElement | null>(null);
 
@@ -68,8 +70,11 @@ export function AppShell({ activeStep, children, guidedActive, onStepChange, onO
     };
   }, []);
 
+  const showHero = !hideDemoChrome || (embedMode && !demoOnlyMode);
+  const showStageChips = !hideDemoChrome || embedMode;
+
   return (
-    <div className="app-shell" ref={shellRef}>
+    <div className={`app-shell${embedMode ? " embed-mode" : ""}${demoOnlyMode ? " demo-only-mode" : ""}`} ref={shellRef}>
       <div className="app-shell-frost" aria-hidden="true" />
       {!embedMode && <nav className="marketing-nav" aria-label="Skills Workflow website">
         <a className="marketing-nav-logo" href="https://www.skillsworkflow.com" aria-label="Skills Workflow">
@@ -93,6 +98,11 @@ export function AppShell({ activeStep, children, guidedActive, onStepChange, onO
           ))}
         </ul>
         <div className="marketing-nav-tools">
+          {onOpenDemoApp && (
+            <button type="button" className="marketing-nav-system" onClick={onOpenDemoApp}>
+              Demo App
+            </button>
+          )}
           {onOpenDesignSystem && (
             <button type="button" className="marketing-nav-system" onClick={onOpenDesignSystem}>
               Design System
@@ -109,7 +119,7 @@ export function AppShell({ activeStep, children, guidedActive, onStepChange, onO
         </div>
       </nav>}
       <main>
-        {!hideDemoChrome && (
+        {showHero && (
           <>
             <h1 className="marketing-hero-title">
               World's first <em>briefing to billing</em> solution for{" "}
@@ -120,33 +130,35 @@ export function AppShell({ activeStep, children, guidedActive, onStepChange, onO
                 <span>Creative</span>
               </span>
             </h1>
-            <div className="marketing-hero-ctas">
+            {!embedMode && <div className="marketing-hero-ctas">
               <a className="hero-cta primary" href="https://www.skillsworkflow.com/book-a-demo">Book a Demo</a>
               <a className="hero-cta secondary" href="https://www.skillsworkflow.com/contact">Request a Quote</a>
-            </div>
+            </div>}
           </>
         )}
-        {children}
-        {!hideDemoChrome && (
-          <div className="stage-chips" aria-label="Demo flow progress">
-            {stages.map((step, index) => {
-              const isActive = step.id === activeStep;
-              const isComplete = guidedActive && activeIndex > index;
-              return (
-                <button
-                  className={`stage-chip${isActive ? " active" : ""}${isComplete ? " complete" : ""}`}
-                  key={step.id}
-                  onClick={() => onStepChange(step.id)}
-                  type="button"
-                >
-                  <span className="stage-chip-dot" data-step={index + 1} />
-                  <span>{step.label}</span>
-                </button>
-              );
-            })}
-          </div>
-        )}
-        {!hideDemoChrome && (
+        <div className="demo-module">
+          {children}
+          {showStageChips && (
+            <div className="stage-chips" aria-label="Demo flow progress">
+              {stages.map((step, index) => {
+                const isActive = step.id === activeStep;
+                const isComplete = guidedActive && activeIndex > index;
+                return (
+                  <button
+                    className={`stage-chip${isActive ? " active" : ""}${isComplete ? " complete" : ""}`}
+                    key={step.id}
+                    onClick={() => onStepChange(step.id)}
+                    type="button"
+                  >
+                    <span className="stage-chip-dot" data-step={index + 1} />
+                    <span>{step.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+        {!hideDemoChrome && !embedMode && (
           <section className="client-strip" aria-label="Trusted by">
             <p>Trusted by global leaders in creative &amp; production agencies, tech, finance, and consulting companies to cut costs and boost team performance.</p>
             <div className="client-strip-marquee" aria-hidden="true">

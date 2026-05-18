@@ -9,12 +9,15 @@ import {
   faPlus,
   faWandMagicSparkles,
   faXmark,
+  faLightbulb,
 } from "@fortawesome/free-solid-svg-icons";
 import type { GuidedDemoStep, GuidedDemoTarget } from "../../data/guidedDemo";
+import { guidedStageIds, guidedStepStage } from "../../data/guidedDemo";
 
 type AIDockProps = {
   active: boolean;
   onActiveChange: (active: boolean) => void;
+  onClosePanel?: () => void;
   onNavigate: (target: GuidedDemoTarget) => void;
   onRestartReady?: (restart: () => void) => void;
   requestedStepIndex?: number | null;
@@ -34,7 +37,7 @@ const COLLAPSED_KEY = "skills-workflow-guided-demo-collapsed";
 export const GUIDED_DEMO_VERSION = "budget-feed-workflow-v1";
 export const GUIDED_DEMO_STEP_KEY = STORAGE_KEY;
 export const GUIDED_DEMO_VERSION_KEY = VERSION_KEY;
-const DEFAULT_FRAME_OVERLAP = 0.35;
+const DEFAULT_FRAME_OVERLAP = 1.0;
 const LAUNCHER_HEIGHT = 30;
 const LAUNCHER_GAP = 2;
 const LAUNCHER_FRAME_OFFSET = 12;
@@ -43,6 +46,7 @@ const LAUNCHER_FALLBACK_WIDTH = 108;
 export function AIDock({
   active,
   onActiveChange,
+  onClosePanel,
   onNavigate,
   onRestartReady,
   requestedStepIndex,
@@ -52,11 +56,12 @@ export function AIDock({
   const [targetRect, setTargetRect] = useState<TargetRect | null>(null);
   const [isWaiting, setIsWaiting] = useState(false);
   const lastTargetEl = useRef<HTMLElement | null>(null);
-  const [collapsed, setCollapsed] = useState(() => readCollapsed());
   const [typedTitle, setTypedTitle] = useState("");
   const [typedBody, setTypedBody] = useState("");
   const [isThinking, setIsThinking] = useState(false);
-  const [dockSize, setDockSize] = useState({ width: 320, height: 380 });
+
+  // Always render as a side card, not a floating modal
+  // Remove floating/overlay logic for this context
   const [isResizing, setIsResizing] = useState(false);
   const resizeStartRef = useRef({ x: 0, y: 0, w: 0, h: 0 });
   const [dockPos, setDockPos] = useState<{ left: number; top: number } | null>(null);
@@ -66,6 +71,9 @@ export function AIDock({
   const dragStartRef = useRef({ mouseX: 0, mouseY: 0, left: 0, top: 0 });
   const dockElRef = useRef<HTMLDivElement | null>(null);
   const launcherElRef = useRef<HTMLButtonElement | null>(null);
+  const [collapsed, setCollapsed] = useState(() => window.localStorage.getItem(COLLAPSED_KEY) === "true");
+  const [dockSize, setDockSize] = useState({ width: 320, height: 480 });
+  const frameRect = document.querySelector(".product-window")?.getBoundingClientRect() || null;
   const [launcherWidth, setLauncherWidth] = useState(LAUNCHER_FALLBACK_WIDTH);
 
   useEffect(() => {
@@ -435,6 +443,44 @@ export function AIDock({
     goToStep(Math.max(activeIndex - 1, 0));
   }, [activeIndex, goToStep]);
 
+  // When the user manually clicks the highlighted element, advance the chat too
+  useEffect(() => {
+    if (!active || currentStep.nextAdvancesOnly) return;
+    let cancelled = false;
+    let frame: number;
+    let attachedEl: HTMLElement | null = null;
+
+    const handleClick = () => {
+      if (document.body.dataset.guidedClickProxy) return; // fired by the chat button — skip
+      // Mirror activateTarget: set proxy so the element's own onClick skips handleManualNavigation
+      document.body.dataset.guidedClickProxy = "true";
+      window.setTimeout(() => {
+        delete document.body.dataset.guidedClickProxy;
+        goNext();
+      }, currentStep.advanceDelayMs ?? 40);
+    };
+
+    const tryAttach = () => {
+      if (cancelled) return;
+      const el = document.querySelector<HTMLElement>(currentStep.selector);
+      if (el) {
+        // Capture phase so this fires before the element's React onClick
+        el.addEventListener("click", handleClick, true);
+        attachedEl = el;
+        return;
+      }
+      frame = window.setTimeout(tryAttach, 100);
+    };
+
+    tryAttach();
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(frame);
+      attachedEl?.removeEventListener("click", handleClick, true);
+    };
+  }, [active, activeIndex, currentStep, goNext]);
+
   const [isAutoAdvancing, setIsAutoAdvancing] = useState(false);
 
   useEffect(() => {
@@ -553,8 +599,7 @@ export function AIDock({
   const isLast = activeIndex === steps.length - 1;
   const primaryLabel = isLast
     ? "Finish"
-    : currentStep.actionLabel
-      ?? (currentStep.nextAdvancesOnly ? "Continue" : currentStep.title);
+    : currentStep.actionLabel ?? currentStep.title;
 
   const isTyping = !!currentStep && (
     typedTitle.length < displayTitle.length ||
@@ -599,198 +644,104 @@ export function AIDock({
     }
   }, [typedTitle, typedBody, isThinking]);
 
-  const dockOverlay = (
-    <div className="ai-dock-layer" aria-live="polite">
-      <div
-        className={`ai-dock${collapsed ? " is-collapsed" : ""}${isResizing ? " is-resizing" : ""}${isDragging ? " is-dragging" : ""}`}
-        ref={dockElRef}
-        style={{
-          width: dockSize.width,
-          ...(dockPos ? { left: dockPos.left, top: dockPos.top, right: "auto", bottom: "auto" } : {}),
-        }}
-      >
-        {!collapsed && (
-          <section className="ai-dock-toast" style={{ height: dockSize.height }}>
-            <div
-              className="ai-dock-resize-handle"
-              onMouseDown={handleResizeStart}
-              role="separator"
-              aria-label="Resize chat"
-            />
-            <header className="ai-dock-toast-head" onMouseDown={handleDragStart}>
-              <span className="ai-dock-avatar" aria-hidden="true">
-                <FontAwesomeIcon icon={faWandMagicSparkles} />
-              </span>
-              <div className="ai-dock-label">
-                <strong>Skills AI assistant</strong>
-                <small>
-                  {showStatusDot && <span className="ai-dock-status-dot" aria-hidden="true" />}
-                  <span>
-                    Briefing to Billing
-                    {active && currentStep ? ` · Step ${activeIndex + 1} of ${steps.length}` : ""}
-                  </span>
-                </small>
-              </div>
-              <div className="ai-dock-actions">
-                <button className="ai-dock-icon" onClick={handleToggleCollapsed} title="Minimise" type="button">
-                  <FontAwesomeIcon icon={faChevronDown} />
-                </button>
-                {active && (
-                  <button className="ai-dock-icon" onClick={handleClose} title="Close guided demo" type="button">
-                    <FontAwesomeIcon icon={faXmark} />
-                  </button>
-                )}
-              </div>
-            </header>
-            <div className="ai-dock-conversation" ref={conversationRef}>
-              <div className="ai-dock-quick-actions" aria-label="Quick actions">
-                <button className="ai-dock-quick" type="button">
-                  <FontAwesomeIcon icon={faMagnifyingGlass} />
-                  <span>Search for a job</span>
-                </button>
-                <button className="ai-dock-quick" type="button">
-                  <FontAwesomeIcon icon={faPlus} />
-                  <span>Create a task</span>
-                </button>
-              </div>
-              <article className="ai-dock-msg ai-dock-msg-welcome">
-                <div className="ai-dock-msg-eyebrow">Welcome</div>
-                <p className="ai-dock-msg-body">
-                  I can walk you through the full Briefing-to-Billing workflow. Want me to start the guided demo?
-                </p>
-              </article>
-              {active && currentStep && historyMessages.map((msg, idx) => {
-                const isLatest = idx === historyMessages.length - 1;
-                const renderTitle = isLatest ? typedTitle : msg.title;
-                const renderBody = isLatest ? typedBody : msg.body;
-                const showCaretTitle = isLatest && !isThinking && typedTitle.length < displayTitle.length;
-                const showCaretBody = isLatest && !isThinking && typedTitle.length === displayTitle.length && typedBody.length < displayBody.length;
-                const bodyVisible = !isLatest || (!isThinking && typedTitle.length === displayTitle.length);
-                return (
-                  <article className="ai-dock-msg" key={`${msg.stepId}-${msg.stepIndex}`}>
-                    <div className="ai-dock-msg-eyebrow">
-                      {isLatest && isThinking ? (
-                        <span className="ai-dock-typing-dots" aria-label="thinking"><i /><i /><i /></span>
-                      ) : (
-                        renderTitle
-                      )}
-                      {showCaretTitle && <span className="ai-dock-caret" aria-hidden="true" />}
-                    </div>
-                    {bodyVisible && (
-                      <p className="ai-dock-msg-body">
-                        {renderBody}
-                        {showCaretBody && <span className="ai-dock-caret" aria-hidden="true" />}
-                      </p>
-                    )}
-                  </article>
-                );
-              })}
-            </div>
-            {active && currentStep ? (
-              <div className="ai-dock-cta">
-                {activeIndex === 0 ? (
-                  <button
-                    className="ai-dock-ghost"
-                    onClick={handleClose}
-                    type="button"
-                  >
-                    Exit guided demo
-                  </button>
-                ) : (
-                  <button
-                    className="ai-dock-ghost"
-                    onClick={goBack}
-                    type="button"
-                  >
-                    Back
-                  </button>
-                )}
-                <button
-                  className="ai-dock-primary"
-                  disabled={isWaiting || isThinking || typedBody.length < displayBody.length}
-                  onClick={handlePrimaryAction}
-                  type="button"
-                >
-                  {primaryLabel}
-                </button>
-              </div>
-            ) : (
-              <div className="ai-dock-cta">
-                <button className="ai-dock-primary" onClick={restart} type="button">
-                  Start guided demo
-                </button>
-              </div>
-            )}
-            <div className="ai-dock-input">
-              <input placeholder="Ask Skills Workflow…" />
-              <button className="ai-dock-send" title="Attach file" type="button">
-                <FontAwesomeIcon icon={faPaperclip} />
-              </button>
-              <button className="ai-dock-send" title="Send" type="button">
-                <FontAwesomeIcon icon={faPaperPlane} />
-              </button>
-            </div>
-          </section>
-        )}
-      </div>
-    </div>
-  );
-
-  const frameRect = typeof document === "undefined"
-    ? null
-    : document.querySelector<HTMLElement>(".product-window")?.getBoundingClientRect() ?? null;
-  // Pin the launcher to the right edge of the platform shell (.product-window) in
-  // document coordinates, so it scrolls naturally with the platform. When the
-  // dock has been dragged off snap, follow the dock's left edge instead.
-  const launcherLeft = (() => {
-    if (!frameRect) return null;
-    if (!isDockDetached) {
-      return window.scrollX + frameRect.right - launcherWidth;
-    }
-    if (!dockPos) return null;
-    const docFrameLeft = window.scrollX + frameRect.left;
-    const docFrameRight = window.scrollX + frameRect.right;
-    return Math.min(Math.max(dockPos.left, docFrameLeft), docFrameRight - launcherWidth);
-  })();
-  const launcherStyle: CSSProperties | undefined = launcherLeft == null || launcherTop == null
-    ? undefined
-    : {
-        left: launcherLeft,
-        top: launcherTop,
-      };
-
-  const launcher = (
-    <button
-      className="ai-dock-launcher"
-      onClick={handleToggleCollapsed}
-      ref={launcherElRef}
-      style={launcherStyle}
-      title={collapsed ? "Open Skills AI" : "Minimise Skills AI"}
-      type="button"
-    >
-      <span className="ai-dock-pulse" aria-hidden="true" />
-      <span>Skills AI</span>
-      <kbd>⌘K</kbd>
-    </button>
-  );
-
-  const spotlight = targetRect ? (
-    <button
-      aria-label={`Continue: ${currentStep.title}`}
-      className="ai-dock-spotlight"
-      onClick={activateTarget}
-      style={spotlightStyle}
-      type="button"
-    />
-  ) : null;
-
-  if (typeof document === "undefined") return dockOverlay;
+  // Render as a fixed side card (fills parent height/width)
   return (
-    <>
-      {createPortal(dockOverlay, document.body)}
-      {createPortal(launcher, document.body)}
-      {spotlight && createPortal(spotlight, document.body)}
-    </>
+    <aside className="ai-dock-sidecard" aria-label="Skills AI assistant">
+      <section className="ai-dock-toast" style={{ height: "100%" }}>
+        <header className="ai-dock-toast-head">
+          <span className="ai-dock-avatar" aria-hidden="true">
+            <FontAwesomeIcon icon={faWandMagicSparkles} />
+          </span>
+          <div className="ai-dock-label">
+            <strong>Skills AI assistant</strong>
+            <small>
+              {active && currentStep ? <span>{(() => { const stages = guidedStageIds(steps); const currentStage = guidedStepStage(currentStep); const stageIndex = stages.indexOf(currentStage); return `Step ${stageIndex >= 0 ? stageIndex + 1 : activeIndex + 1} of ${stages.length}`; })()}</span> : null}
+            </small>
+          </div>
+          <button
+            aria-label="Close chat"
+            className="ai-dock-close"
+            onClick={() => onClosePanel?.()}
+            type="button"
+          >
+            <FontAwesomeIcon icon={faXmark} />
+          </button>
+        </header>
+        <div className="ai-dock-quick-actions" aria-label="Quick actions">
+          <button className="ai-dock-quick" type="button">
+            <FontAwesomeIcon icon={faMagnifyingGlass} />
+            <span>Search for a job</span>
+          </button>
+          <button className="ai-dock-quick" type="button">
+            <FontAwesomeIcon icon={faPlus} />
+            <span>Create a task</span>
+          </button>
+        </div>
+        <div className="ai-dock-conversation">
+          <article className="ai-dock-msg ai-dock-msg-welcome">
+            <div className="ai-dock-msg-eyebrow">Welcome</div>
+            <p className="ai-dock-msg-body">
+              I can walk you through the full Briefing-to-Billing workflow. Want me to start the guided demo?
+            </p>
+          </article>
+          {active && currentStep && historyMessages.map((msg, idx) => {
+            const isLatest = idx === historyMessages.length - 1;
+            const renderTitle = isLatest ? typedTitle : msg.title;
+            const renderBody = isLatest ? typedBody : msg.body;
+            return (
+              <article className="ai-dock-msg" key={`${msg.stepId}-${msg.stepIndex}`}>
+                <div className="ai-dock-msg-eyebrow">{renderTitle}</div>
+                <p className="ai-dock-msg-body">{renderBody}</p>
+              </article>
+            );
+          })}
+        </div>
+        {active && currentStep ? (
+          <div className="ai-dock-cta">
+            {activeIndex === 0 ? (
+              <button
+                className="ai-dock-ghost"
+                onClick={handleClose}
+                type="button"
+              >
+                Exit guided demo
+              </button>
+            ) : (
+              <button
+                className="ai-dock-ghost"
+                onClick={goBack}
+                type="button"
+              >
+                Back
+              </button>
+            )}
+            <button
+              className="ai-dock-primary"
+              disabled={false}
+              onClick={handlePrimaryAction}
+              type="button"
+            >
+              {primaryLabel}
+            </button>
+          </div>
+        ) : (
+          <div className="ai-dock-cta">
+            <button className="ai-dock-primary" onClick={restart} type="button">
+              Start guided demo
+            </button>
+          </div>
+        )}
+        <div className="ai-dock-input">
+          <input placeholder="Ask Skills Workflow…" />
+          <button className="ai-dock-send" title="Attach file" type="button">
+            <FontAwesomeIcon icon={faPaperclip} />
+          </button>
+          <button className="ai-dock-send" title="Send" type="button">
+            <FontAwesomeIcon icon={faPaperPlane} />
+          </button>
+        </div>
+      </section>
+    </aside>
   );
 }
 

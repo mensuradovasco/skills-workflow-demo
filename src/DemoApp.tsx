@@ -1,3 +1,46 @@
+// Duplicate of ChatDrawer for AI chat as a side card
+function AIChatDrawer({ onClose }: { onClose: () => void }) {
+  return (
+    <aside className="ai-chat-drawer" aria-label="AI Chat">
+      <header className="chat-drawer-top">
+        <button aria-label="Close AI chat" onClick={onClose}>
+          <FontAwesomeIcon icon={faChevronLeft} />
+        </button>
+        <div className="chat-project-title">
+          <span><FontAwesomeIcon icon={faWandMagicSparkles} /></span>
+          <div>
+            <strong>Skills AI assistant</strong>
+            <small>AI chat workflow</small>
+          </div>
+        </div>
+        <button aria-label="More AI chat actions">
+          <FontAwesomeIcon icon={faEllipsis} />
+        </button>
+      </header>
+      <div className="chat-date">AI help across project, budget, tasks, resources, and delivery</div>
+      <div className="assistant-quick-actions" aria-label="Assistant shortcuts">
+        <button type="button"><span><FontAwesomeIcon icon={faMagnifyingGlass} /></span><strong>Search for a job</strong></button>
+        <button type="button"><span><FontAwesomeIcon icon={faLightbulb} /></span><strong>Request a feature</strong></button>
+        <button type="button"><span><FontAwesomeIcon icon={faBug} /></span><strong>Report a problem</strong></button>
+      </div>
+      <div className="chat-thread">
+        <article className="chat-message">
+          <div>
+            <strong>Skills AI Assistant</strong>
+            <p>I can answer questions, find conflicts, draft updates, create follow-up items, and help move work through the system.</p>
+            <small>Now</small>
+          </div>
+        </article>
+      </div>
+      <footer className="chat-composer">
+        <input placeholder="Ask Skills Workflow…" />
+        <button aria-label="Attach file"><FontAwesomeIcon icon={faPaperclip} /></button>
+        <button aria-label="Send message"><FontAwesomeIcon icon={faPaperPlane} /></button>
+        <button aria-label="Close AI chat" onClick={onClose}><FontAwesomeIcon icon={faXmark} /></button>
+      </footer>
+    </aside>
+  );
+}
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
@@ -8,10 +51,9 @@ import {
   faCalculator,
   faChartPie,
   faCheck,
-  faChevronLeft,
   faCircleQuestion,
   faClipboardList,
-  faComments,
+  faComments, faChevronLeft,
   faEllipsis,
   faFolderOpen,
   faHouse,
@@ -113,11 +155,30 @@ const railItems: RailItem[] = [
   { kind: "group", icon: faChartPie, label: "Profitability", items: [{ label: "All", workspace: "profitability" }] },
 ];
 
+// Keep the old floating QA widget code available, but hidden from UI for now.
+const SHOW_QA_WIDGET = false;
+
 export function DemoApp() {
+  const [isAIChatOpen, setIsAIChatOpen] = useState(false);
   const initialRoute = getInitialRoute();
-  const isEmbed = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("embed") === "1";
+  const searchParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+  const normalizedPath = typeof window !== "undefined" ? window.location.pathname.replace(/\/$/, "") : "";
+  const isDemoPath = normalizedPath === "/demo";
+  const isEmbedPath = normalizedPath === "/embed";
+  const isDemoOnly = isDemoPath || isEmbedPath || searchParams?.get("demo") === "1" || searchParams?.get("mode") === "demo" || (searchParams?.get("embed") === "1" && searchParams?.get("demoOnly") === "1");
+  const isEmbed = isEmbedPath || isDemoOnly || searchParams?.get("embed") === "1";
+  const showProductTopbar = !isEmbed || isDemoOnly;
   const [activeStep, setActiveStep] = useState<DemoStep>(initialRoute.step);
   const [navHistory, setNavHistory] = useState<DemoStep[]>([initialRoute.step]);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle("demo-only-document", isDemoOnly);
+    document.body.classList.toggle("demo-only-document", isDemoOnly);
+    return () => {
+      document.documentElement.classList.remove("demo-only-document");
+      document.body.classList.remove("demo-only-document");
+    };
+  }, [isDemoOnly]);
 
   useEffect(() => {
     setNavHistory((prev) => {
@@ -127,9 +188,24 @@ export function DemoApp() {
     });
   }, [activeStep]);
   const [activeWorkspace, setActiveWorkspace] = useState<WorkspaceView | null>(initialRoute.workspace);
-  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(true);
+  const [hasEntered, setHasEntered] = useState(false);
+  const productLayoutRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const el = productLayoutRef.current;
+    if (!el) return;
+    if (!('IntersectionObserver' in window)) { setHasEntered(true); return; }
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) { setHasEntered(true); observer.disconnect(); } },
+      { threshold: 0.1 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
   const [isAutoPlaying, setIsAutoPlaying] = useState(false);
   const [isGuidedDemoActive, setIsGuidedDemoActive] = useState(() => readGuidedDemoPreference());
+  const [chatGuidedIndex, setChatGuidedIndex] = useState(1);
   const [guidedStepRequest, setGuidedStepRequest] = useState<number | null>(null);
   const [tourView, setTourView] = useState<TourView>(null);
   const [activeGuidedStepId, setActiveGuidedStepId] = useState<string | null>(null);
@@ -187,7 +263,6 @@ export function DemoApp() {
 
   const navigateForGuidedDemo = useCallback((target: GuidedDemoTarget) => {
     setIsAutoPlaying(false);
-    setIsChatOpen(false);
     setActiveWorkspace(target.workspace ?? null);
     setTourView(target.view ?? null);
     setActiveStep(target.step);
@@ -224,6 +299,7 @@ export function DemoApp() {
     }
 
     const target = guidedDemoSteps[guidedIndex].target;
+    setChatGuidedIndex(guidedIndex);
     setGuidedStepRequest(null);
     window.setTimeout(() => setGuidedStepRequest(guidedIndex), 0);
     window.localStorage.setItem(GUIDED_DEMO_STEP_KEY, String(guidedIndex));
@@ -232,6 +308,21 @@ export function DemoApp() {
     setActiveWorkspace(target.workspace ?? null);
     setGuidedDemoActive(true);
   }, [setGuidedDemoActive]);
+
+  const runGuidedFromChat = useCallback((index: number) => {
+    const bounded = Math.min(Math.max(index, 0), guidedDemoSteps.length - 1);
+    const step = guidedDemoSteps[bounded];
+    if (!step) return;
+    setChatGuidedIndex(bounded);
+    setGuidedStepRequest(null);
+    window.setTimeout(() => setGuidedStepRequest(bounded), 0);
+    window.localStorage.setItem(GUIDED_DEMO_STEP_KEY, String(bounded));
+    setGuidedDemoActive(true);
+    setIsChatOpen(true);
+    navigateForGuidedDemo(step.target);
+  }, [navigateForGuidedDemo, setGuidedDemoActive]);
+
+  const currentChatGuidedStep = guidedDemoSteps[chatGuidedIndex] ?? guidedDemoSteps[0];
 
   if (showDesignSystem) {
     return (
@@ -248,184 +339,216 @@ export function DemoApp() {
   }
 
   return (
-    <AppShell
-      activeStep={railActiveStep}
-      guidedActive={isGuidedDemoActive}
-      onStepChange={jumpToGuidedStage}
-      onOpenDesignSystem={() => setShowDesignSystem(true)}
-      hideDemoChrome={isEmbed}
-      embedMode={isEmbed}
+      <AppShell
+        activeStep={railActiveStep}
+        guidedActive={isGuidedDemoActive}
+        onStepChange={jumpToGuidedStage}
+        onOpenDesignSystem={() => setShowDesignSystem(true)}
+        onOpenDemoApp={() => {
+          window.location.href = "/demo";
+        }}
+        hideDemoChrome={isEmbed}
+        embedMode={isEmbed}
+        demoOnlyMode={isDemoOnly}
     >
       <section className="demo-stage">
-        <div className="product-window">
-          <div className="skills-topbar">
-            <div className="skills-logo">
-              <img src="https://cdn.prod.website-files.com/689701f28dcfeea6454a8a48/69e8c8ea231a90b0dd55cfb8_logo-1-white%402x.png" alt="Skills Workflow" />
-            </div>
-            <div className="skills-breadcrumbs">
-              {navHistory.map((step, idx, arr) => (
-                <span key={`${step}-${idx}`}>
-                  {idx === arr.length - 1 ? <strong>{crumbLabel(step)}</strong> : crumbLabel(step)}
-                </span>
-              ))}
-            </div>
-            <div className="topbar-tools">
-              <button aria-label="Search"><FontAwesomeIcon icon={faMagnifyingGlass} /></button>
-              <button aria-label="Help"><FontAwesomeIcon icon={faCircleQuestion} /></button>
-              <button
-                aria-label="Messages"
-                className={isChatOpen ? "active" : ""}
-                onClick={() => setIsChatOpen((value) => !value)}
-              >
-                <FontAwesomeIcon icon={faComments} />
-              </button>
-              <button
-                className={activeStep === "request" ? "notification-trigger has-alert" : "notification-trigger"}
-                aria-label="Alerts"
-                onClick={() => {
-                  if (!isGuidedProxyClick()) handleManualNavigation();
-                  setActiveWorkspace(null);
-                  setActiveStep("request");
-                }}
-              >
-                <FontAwesomeIcon icon={faBell} />
-                {activeStep === "request" && <span>1</span>}
-              </button>
-              <strong>vasco.mensurado</strong>
-            </div>
-          </div>
-          {activeStep === "request" && !activeWorkspace && (
-            <div className="request-notification highlight" data-tour-anchor="client-request" aria-live="polite">
-              <div className="brand-avatar client-logo-badge">
-                <img src={campaign.clientLogo} alt={campaign.client} />
-              </div>
-              <div>
-                <small>New client request</small>
-                <strong>{campaign.client}</strong>
-                <span>{campaign.campaign}</span>
-                <em>Scope: website, 15s video and 3D banner</em>
-              </div>
-            </div>
-          )}
-          <div className="product-shell">
-            <div className="product-main">
-              <div className={`skills-body ${bodyMode}`}>
-                <aside className="app-rail" aria-label="Product navigation" ref={railRef}>
-                  {railItems.map((item, index) => {
-                    const isActive = index === activeRailIndex;
-                    if (item.kind === "single") {
-                      return (
-                        <button
-                          aria-label={item.label}
-                          className={isActive ? "active" : ""}
-                          data-tour-anchor={
-                            item.workspace === "profitability"
-                              ? "profitability-sidebar-button"
-                              : undefined
-                          }
-                          key={item.label}
-                          onClick={() => {
-                            if (!isGuidedProxyClick()) handleManualNavigation();
-                            setOpenRailGroup(null);
-                            if (item.workspace === "home") {
-                              setActiveWorkspace(null);
-                              setActiveStep("request");
-                              return;
-                            }
-                            setActiveWorkspace(item.workspace);
-                          }}
-                          title={item.label}
-                        >
-                          <FontAwesomeIcon icon={item.icon} />
-                        </button>
-                      );
-                    }
-                    const isOpen = openRailGroup === item.label;
-                    return (
-                      <div
-                        className="app-rail-group"
-                        key={item.label}
-                        onMouseEnter={() => setOpenRailGroup(item.label)}
-                        onMouseLeave={() => setOpenRailGroup((current) => (current === item.label ? null : current))}
-                      >
-                        <button
-                          aria-label={item.label}
-                          aria-expanded={isOpen}
-                          aria-haspopup="menu"
-                          className={`${isActive ? "active" : ""}${isOpen ? " is-open" : ""}`}
-                          data-tour-anchor={
-                            item.label === "Resources" ? "resources-sidebar-button" : undefined
-                          }
-                          onClick={() => {
-                            if (!isGuidedProxyClick()) handleManualNavigation();
-                            setOpenRailGroup(item.label);
-                            const first = item.items[0];
-                            if (first) setActiveWorkspace(first.workspace);
-                          }}
-                          onFocus={() => setOpenRailGroup(item.label)}
-                          title={item.label}
-                        >
-                          <FontAwesomeIcon icon={item.icon} />
-                        </button>
-                        {isOpen && (
-                          <div className="app-rail-flyout" role="menu" aria-label={item.label}>
-                            <div className="app-rail-flyout-card">
-                              <div className="app-rail-flyout-title">{item.label}</div>
-                              <ul>
-                                {item.items.map((sub) => (
-                                  <li key={sub.workspace}>
-                                    <button
-                                      type="button"
-                                      role="menuitem"
-                                      className={activeWorkspace === sub.workspace ? "is-current" : ""}
-                                      onClick={() => {
-                                        if (!isGuidedProxyClick()) handleManualNavigation();
-                                        setActiveWorkspace(sub.workspace);
-                                        setOpenRailGroup(null);
-                                      }}
-                                    >
-                                      {sub.label}
-                                    </button>
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </aside>
-                <div className="app-content">
-                  {activeWorkspace ? (
-                    <WorkspaceContent workspace={activeWorkspace} />
-                  ) : (
-                    <StepContent
-                      step={activeStep}
-                      guidedMode={isGuidedDemoActive}
-                      onStartGuidedDemoFromRequest={startGuidedDemoFromRequest}
-                      tourView={tourView}
-                      onNavigate={(step, view) => {
-                        setActiveWorkspace(null);
-                        setTourView(view ?? null);
-                        setActiveStep(step);
-                      }}
-                    />
-                  )}
+        <div ref={productLayoutRef} className={`product-layout${isChatOpen ? " has-assistant" : ""}`}>
+          <div className="product-window">
+            {showProductTopbar && (
+              <div className="skills-topbar">
+                <div className="skills-logo">
+                  <img src="https://cdn.prod.website-files.com/689701f28dcfeea6454a8a48/69e8c8ea231a90b0dd55cfb8_logo-1-white%402x.png" alt="Skills Workflow" />
+                </div>
+                <div className="skills-breadcrumbs">
+                  {navHistory.map((step, idx, arr) => (
+                    <span key={`${step}-${idx}`}>
+                      {idx === arr.length - 1 ? <strong>{crumbLabel(step)}</strong> : crumbLabel(step)}
+                    </span>
+                  ))}
+                </div>
+                <div className="topbar-tools">
+                  <button aria-label="Search"><FontAwesomeIcon icon={faMagnifyingGlass} /></button>
+                  <button aria-label="Help"><FontAwesomeIcon icon={faCircleQuestion} /></button>
+                  <button
+                    className={activeStep === "request" ? "notification-trigger has-alert" : "notification-trigger"}
+                    aria-label="Alerts"
+                    onClick={() => {
+                      if (!isGuidedProxyClick()) handleManualNavigation();
+                      setActiveWorkspace(null);
+                      setActiveStep("request");
+                    }}
+                  >
+                    <FontAwesomeIcon icon={faBell} />
+                    {activeStep === "request" && <span>1</span>}
+                  </button>
+                  <strong>Arthur</strong>
                 </div>
               </div>
-              {isChatOpen && <ChatDrawer onClose={() => setIsChatOpen(false)} />}
+            )}
+            {hasEntered && activeStep === "request" && !activeWorkspace && (
+              <div
+                className="request-notification highlight"
+                data-tour-anchor="client-request"
+                aria-live="polite"
+                role="button"
+                tabIndex={0}
+                onClick={startGuidedDemoFromRequest}
+                onKeyDown={(e) => e.key === "Enter" && startGuidedDemoFromRequest()}
+              >
+                <div className="brand-avatar client-logo-badge">
+                  <img src={campaign.clientLogo} alt={campaign.client} />
+                </div>
+                <div>
+                  <small>New client request</small>
+                  <strong>{campaign.client}</strong>
+                  <span>{campaign.campaign}</span>
+                  <em>Scope: website, 15s video and 3D banner</em>
+                </div>
+              </div>
+            )}
+            <div className="product-shell">
+              <div className="product-main">
+                <div className={`skills-body ${bodyMode}`}>
+                  <aside className="app-rail" aria-label="Product navigation" ref={railRef}>
+                    {railItems.map((item, index) => {
+                      const isActive = index === activeRailIndex;
+                      if (item.kind === "single") {
+                        return (
+                          <button
+                            aria-label={item.label}
+                            className={isActive ? "active" : ""}
+                            data-tour-anchor={
+                              item.workspace === "profitability"
+                                ? "profitability-sidebar-button"
+                                : undefined
+                            }
+                            key={item.label}
+                            onClick={() => {
+                              if (!isGuidedProxyClick()) handleManualNavigation();
+                              setOpenRailGroup(null);
+                              if (item.workspace === "home") {
+                                setActiveWorkspace(null);
+                                setActiveStep("request");
+                                return;
+                              }
+                              setActiveWorkspace(item.workspace);
+                            }}
+                            title={item.label}
+                          >
+                            <FontAwesomeIcon icon={item.icon} />
+                          </button>
+                        );
+                      }
+                      const isOpen = openRailGroup === item.label;
+                      return (
+                        <div
+                          className="app-rail-group"
+                          key={item.label}
+                          onMouseEnter={() => setOpenRailGroup(item.label)}
+                          onMouseLeave={() => setOpenRailGroup((current) => (current === item.label ? null : current))}
+                        >
+                          <button
+                            aria-label={item.label}
+                            aria-expanded={isOpen}
+                            aria-haspopup="menu"
+                            className={`${isActive ? "active" : ""}${isOpen ? " is-open" : ""}`}
+                            data-tour-anchor={
+                              item.label === "Resources" ? "resources-sidebar-button" : undefined
+                            }
+                            onClick={() => {
+                              if (!isGuidedProxyClick()) handleManualNavigation();
+                              setOpenRailGroup(item.label);
+                              const first = item.items[0];
+                              if (first) setActiveWorkspace(first.workspace);
+                            }}
+                            onFocus={() => setOpenRailGroup(item.label)}
+                            title={item.label}
+                          >
+                            <FontAwesomeIcon icon={item.icon} />
+                          </button>
+                          {isOpen && (
+                            <div className="app-rail-flyout" role="menu" aria-label={item.label}>
+                              <div className="app-rail-flyout-card">
+                                <div className="app-rail-flyout-title">{item.label}</div>
+                                <ul>
+                                  {item.items.map((sub) => (
+                                    <li key={sub.workspace}>
+                                      <button
+                                        type="button"
+                                        role="menuitem"
+                                        className={activeWorkspace === sub.workspace ? "is-current" : ""}
+                                        onClick={() => {
+                                          if (!isGuidedProxyClick()) handleManualNavigation();
+                                          setActiveWorkspace(sub.workspace);
+                                          setOpenRailGroup(null);
+                                        }}
+                                      >
+                                        {sub.label}
+                                      </button>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </aside>
+                  <div className="app-content">
+                    {activeWorkspace ? (
+                      <WorkspaceContent workspace={activeWorkspace} />
+                    ) : (
+                      <StepContent
+                        step={activeStep}
+                        guidedMode={isGuidedDemoActive}
+                        onStartGuidedDemoFromRequest={startGuidedDemoFromRequest}
+                        tourView={tourView}
+                        onNavigate={(step, view) => {
+                          setActiveWorkspace(null);
+                          setTourView(view ?? null);
+                          setActiveStep(step);
+                        }}
+                      />
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
+          <div className={`assistant-sidecar${isChatOpen ? " is-open" : ""}${hasEntered ? " has-entered" : ""}`} aria-hidden={!isChatOpen}>
+            {isChatOpen && (
+              <AIDock
+                active={isGuidedDemoActive}
+                onActiveChange={setGuidedDemoActive}
+                onClosePanel={() => setIsChatOpen(false)}
+                onNavigate={navigateForGuidedDemo}
+                requestedStepIndex={guidedStepRequest}
+                steps={guidedDemoSteps}
+              />
+            )}
+          </div>
+          {!isChatOpen && (
+            <button
+              aria-label="Open chat"
+              className="assistant-fab"
+              onClick={() => setIsChatOpen(true)}
+              type="button"
+            >
+              <FontAwesomeIcon icon={faWandMagicSparkles} />
+            </button>
+          )}
         </div>
       </section>
-      <AIDock
-        active={isGuidedDemoActive}
-        onActiveChange={setGuidedDemoActive}
-        onNavigate={navigateForGuidedDemo}
-        requestedStepIndex={guidedStepRequest}
-        steps={guidedDemoSteps}
-      />
+      {SHOW_QA_WIDGET && (
+        <AIDock
+          active={isGuidedDemoActive}
+          onActiveChange={setGuidedDemoActive}
+          onNavigate={navigateForGuidedDemo}
+          requestedStepIndex={guidedStepRequest}
+          steps={guidedDemoSteps}
+        />
+      )}
     </AppShell>
   );
 }
@@ -557,7 +680,30 @@ function WorkspaceContent({ workspace }: { workspace: WorkspaceView }) {
   return <AgencyProfitabilityWorkspace />;
 }
 
-function ChatDrawer({ onClose }: { onClose: () => void }) {
+function ChatDrawer({
+  guidedActive,
+  guidedBody,
+  guidedIndex,
+  guidedTitle,
+  onBackGuided,
+  onClose,
+  onNextGuided,
+  onStartGuided,
+  onStopGuided,
+  totalGuidedSteps,
+}: {
+  guidedActive: boolean;
+  guidedBody: string;
+  guidedIndex: number;
+  guidedTitle: string;
+  onBackGuided: () => void;
+  onClose: () => void;
+  onNextGuided: () => void;
+  onStartGuided: () => void;
+  onStopGuided: () => void;
+  totalGuidedSteps: number;
+}) {
+  const isLastGuided = guidedIndex >= totalGuidedSteps - 1;
   return (
     <aside className="chat-drawer" aria-label="Messages">
       <header className="chat-drawer-top">
@@ -582,6 +728,25 @@ function ChatDrawer({ onClose }: { onClose: () => void }) {
         <span>+3</span>
       </div>
       <div className="chat-date">Today, 10:05</div>
+      <section className="chat-guided-demo" aria-label="Guided demo">
+        {!guidedActive ? (
+          <>
+            <small>WELCOME</small>
+            <p>I can walk you through the full Briefing-to-Billing workflow. Want me to start the guided demo?</p>
+            <button type="button" onClick={onStartGuided}>Start guided demo</button>
+          </>
+        ) : (
+          <>
+            <small>{`Step ${guidedIndex + 1} of ${totalGuidedSteps}`}</small>
+            <strong>{guidedTitle}</strong>
+            <p>{guidedBody}</p>
+            <div className="chat-guided-actions">
+              <button type="button" disabled={guidedIndex <= 0} onClick={onBackGuided}>Back</button>
+              <button type="button" onClick={isLastGuided ? onStopGuided : onNextGuided}>{isLastGuided ? "Finish" : "Next"}</button>
+            </div>
+          </>
+        )}
+      </section>
       <div className="chat-thread">
         {chatMessages.map((message) => (
           <article className={message.mine ? "chat-message mine" : "chat-message"} key={`${message.author}-${message.time}`}>

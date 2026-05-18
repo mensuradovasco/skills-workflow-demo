@@ -150,7 +150,7 @@ export function GanttView() {
               <span>{row.start}</span>
               <span>{row.end}</span>
               <span className="gantt-duration">{row.duration}</span>
-              <span><i className={`type-dot ${row.color}`} />{row.type}</span>
+              <span>{row.type}</span>
               <span className="gantt-avatars">
                 {assignees.map((member, avatarIndex) => (
                   <img
