@@ -45,6 +45,7 @@ type DocumentFrameProps = {
   initialTab?: string;
   jobsContent?: ReactNode;
   resourceUtilizationContent?: ReactNode;
+  subtitle?: ReactNode;
   tabAnchors?: Record<string, string>;
   tabs?: string[];
   title?: string;
@@ -76,6 +77,7 @@ export function DocumentFrame({
   jobsContent,
   onFeedStageAction,
   resourceUtilizationContent,
+  subtitle,
   tabAnchors,
   tabs = defaultTabs,
   title = campaign.campaign,
@@ -108,7 +110,7 @@ export function DocumentFrame({
             <div>
               <strong>{title}</strong>
               <small>
-                {campaign.client} <span>/</span> {campaign.campaign}
+                {subtitle ?? (<>{campaign.client} <span>/</span> {campaign.campaign}</>)}
               </small>
             </div>
           </div>

@@ -93,6 +93,7 @@ import {
 } from "./components/product/AIDock";
 import { Profitability } from "./components/product/Profitability";
 import { ProjectSetup } from "./components/product/ProjectSetup";
+import { JobDocument, type JobKey } from "./components/product/JobDocument";
 import { ResourcePlanner } from "./components/product/ResourcePlanner";
 import { TaskBoard } from "./components/product/TaskBoard";
 import { campaign, demoSteps, type DemoStep } from "./data/cocaColaCampaign";
@@ -208,6 +209,10 @@ export function DemoApp() {
   const [chatGuidedIndex, setChatGuidedIndex] = useState(1);
   const [guidedStepRequest, setGuidedStepRequest] = useState<number | null>(null);
   const [tourView, setTourView] = useState<TourView>(null);
+  const [openJobKey, setOpenJobKey] = useState<JobKey | null>(null);
+  useEffect(() => {
+    setOpenJobKey(null);
+  }, [activeStep, activeWorkspace]);
   const [activeGuidedStepId, setActiveGuidedStepId] = useState<string | null>(null);
   const [showDesignSystem, setShowDesignSystem] = useState(false);
   const [openRailGroup, setOpenRailGroup] = useState<string | null>(null);
@@ -496,7 +501,13 @@ export function DemoApp() {
                     })}
                   </aside>
                   <div className="app-content">
-                    {activeWorkspace ? (
+                    {openJobKey ? (
+                      <div className="clickable-panel">
+                        <div data-tour-anchor="job-overview">
+                          <JobDocument jobKey={openJobKey} />
+                        </div>
+                      </div>
+                    ) : activeWorkspace ? (
                       <WorkspaceContent workspace={activeWorkspace} />
                     ) : (
                       <StepContent
@@ -504,9 +515,15 @@ export function DemoApp() {
                         guidedMode={isGuidedDemoActive}
                         onStartGuidedDemoFromRequest={startGuidedDemoFromRequest}
                         tourView={tourView}
+                        onOpenJob={(key) => {
+                          setActiveWorkspace(null);
+                          setTourView(null);
+                          setOpenJobKey(key);
+                        }}
                         onNavigate={(step, view) => {
                           setActiveWorkspace(null);
                           setTourView(view ?? null);
+                          setOpenJobKey(null);
                           setActiveStep(step);
                         }}
                       />
@@ -925,12 +942,14 @@ function StepContent({
   step,
   tourView,
   onNavigate,
+  onOpenJob,
   onStartGuidedDemoFromRequest,
 }: {
   guidedMode: boolean;
   step: DemoStep;
   tourView: TourView;
   onNavigate: (step: DemoStep, view?: TourView) => void;
+  onOpenJob: (key: JobKey) => void;
   onStartGuidedDemoFromRequest: () => void;
 }) {
   if (step === "request") {
@@ -977,7 +996,7 @@ function StepContent({
                   className={className}
                   key={name}
                   style={stepDelay(index * 80)}
-                  onClick={() => onNavigate("project", "jobs")}
+                  onClick={() => onOpenJob("design-landing-page-hero")}
                   aria-label={`Open ${client}`}
                 >
                   {content}
