@@ -986,6 +986,10 @@ button {
   margin-top: 12px;
 }
 
+.embed-mode .hotspot-zone.top-right-action {
+  display: none;
+}
+
 .demo-only-mode .demo-stage {
   justify-content: center;
   width: 100%;
