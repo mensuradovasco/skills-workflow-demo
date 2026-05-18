@@ -8,6 +8,7 @@ export type JobKey = "design-landing-page-hero";
 
 type JobContent = {
   title: string;
+  parentDocument: string;
   stageLabel: string;
   stageActionLabel: string;
   dateRange: { start: string; end: string };
@@ -18,6 +19,7 @@ type JobContent = {
 const JOB_CONTENT: Record<JobKey, JobContent> = {
   "design-landing-page-hero": {
     title: "Design landing page hero",
+    parentDocument: campaign.campaign,
     stageLabel: "In progress",
     stageActionLabel: "Submit for review",
     dateRange: { start: "08 Jun 2026", end: "12 Jun 2026" },
@@ -75,7 +77,7 @@ export function JobDocument({ jobKey = "design-landing-page-hero" }: JobDocument
       title={job.title}
       subtitle={
         <>
-          {campaign.client} <span>/</span> {campaign.campaign} <span>/</span> Jobs <span>/</span> {job.title}
+          {campaign.client} <span>/</span> {job.parentDocument} <span>/</span> {job.title}
         </>
       }
       feedHideChecklist
