@@ -295,6 +295,7 @@ export function DemoApp() {
   const jumpToGuidedStage = useCallback((step: DemoStep) => {
     const guidedIndex = firstGuidedIndexForStage(guidedDemoSteps, step);
     setIsAutoPlaying(false);
+    setOpenJobKey(null);
 
     if (guidedIndex == null) {
       setActiveWorkspace(null);
@@ -380,6 +381,7 @@ export function DemoApp() {
                     onClick={() => {
                       if (!isGuidedProxyClick()) handleManualNavigation();
                       setActiveWorkspace(null);
+                      setOpenJobKey(null);
                       setActiveStep("request");
                     }}
                   >
@@ -431,6 +433,7 @@ export function DemoApp() {
                             onClick={() => {
                               if (!isGuidedProxyClick()) handleManualNavigation();
                               setOpenRailGroup(null);
+                              setOpenJobKey(null);
                               if (item.workspace === "home") {
                                 setActiveWorkspace(null);
                                 setActiveStep("request");
