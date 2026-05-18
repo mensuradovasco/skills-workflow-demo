@@ -96,7 +96,7 @@ button {
 .app-shell {
   min-height: 100vh;
   --product-content-gutter: 10px;
-  --assistant-inline-width: clamp(264px, 19vw, 298px);
+  --assistant-inline-width: clamp(200px, calc(var(--demo-frame-width) * 0.25), 320px);
   --demo-horizontal-gutter: clamp(12px, 2.1vw, 34px);
   --demo-frame-max-width: 1720px;
   --demo-frame-width: min(var(--demo-frame-max-width), calc(100vw - (var(--demo-horizontal-gutter) * 2)));
@@ -1612,19 +1612,8 @@ button {
 }
 
 @media (max-width: 1280px) {
-  .app-shell {
-    --assistant-inline-width: min(318px, 34vw);
-  }
-
   .chat-message > div {
     max-width: 252px;
-  }
-}
-
-@media (max-width: 1080px) {
-  .product-layout.has-assistant .assistant-sidecar {
-    width: min(356px, calc(100vw - 56px));
-    flex-basis: min(356px, calc(100vw - 56px));
   }
 }
 
@@ -4111,6 +4100,7 @@ button.task-row.is-navigable:focus-visible {
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr);
   height: 100%;
+  min-width: 0;
   min-height: 0;
   overflow: hidden;
   border-radius: 8px;
@@ -5408,9 +5398,15 @@ button.task-row.is-navigable:focus-visible {
 
 .document-tab-content {
   grid-row: 3;
+  min-width: 0;
   min-height: 0;
   overflow: hidden;
   animation: fadeUp 320ms ease both;
+}
+
+.document-tab-content > * {
+  height: 100%;
+  min-width: 0;
 }
 
 .document-tabs {
@@ -5497,6 +5493,7 @@ button.task-row.is-navigable:focus-visible {
 .document-table {
   overflow: auto;
   height: 430px;
+  min-width: 0;
   background:
     linear-gradient(#fff, #fff) padding-box,
     repeating-linear-gradient(90deg, transparent 0 148px, #edf1f5 149px 150px);
@@ -6581,8 +6578,10 @@ button.task-row.is-navigable:focus-visible {
   grid-template-columns: repeat(4, minmax(210px, 1fr));
   gap: 12px;
   height: 100%;
+  min-width: 0;
   min-height: 430px;
   padding: 14px;
+  overflow: auto;
   background:
     linear-gradient(#fff, #fff) padding-box,
     repeating-linear-gradient(90deg, transparent 0 148px, #edf1f5 149px 150px);

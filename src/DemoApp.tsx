@@ -977,7 +977,7 @@ function StepContent({
                   className={className}
                   key={name}
                   style={stepDelay(index * 80)}
-                  onClick={() => onNavigate("project", "documents")}
+                  onClick={() => onNavigate("project", "jobs")}
                   aria-label={`Open ${client}`}
                 >
                   {content}

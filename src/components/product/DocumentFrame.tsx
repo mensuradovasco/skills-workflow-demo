@@ -89,7 +89,11 @@ export function DocumentFrame({
   }, [activeTab, initialTab]);
 
   useEffect(() => {
-    tabRefs.current[selectedTab]?.scrollIntoView({ block: "nearest", inline: "center" });
+    const tabButton = tabRefs.current[selectedTab];
+    const tabStrip = tabButton?.parentElement;
+    if (!tabButton || !tabStrip) return;
+    const left = tabButton.offsetLeft - (tabStrip.clientWidth - tabButton.offsetWidth) / 2;
+    tabStrip.scrollTo({ left: Math.max(0, left), behavior: "smooth" });
   }, [selectedTab]);
 
   return (
