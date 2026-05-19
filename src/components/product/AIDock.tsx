@@ -678,12 +678,14 @@ export function AIDock({
           </button>
         </div>
         <div className="ai-dock-conversation">
-          <article className="ai-dock-msg ai-dock-msg-welcome">
-            <div className="ai-dock-msg-eyebrow">Welcome</div>
-            <p className="ai-dock-msg-body">
-              I can walk you through the full Briefing-to-Billing workflow. Want me to start the guided demo?
-            </p>
-          </article>
+          {!active && (
+            <article className="ai-dock-msg ai-dock-msg-welcome">
+              <div className="ai-dock-msg-eyebrow">Welcome</div>
+              <p className="ai-dock-msg-body">
+                I can walk you through the full Briefing-to-Billing workflow. Want me to start the guided demo?
+              </p>
+            </article>
+          )}
           {active && currentStep && historyMessages.map((msg, idx) => {
             const isLatest = idx === historyMessages.length - 1;
             const renderTitle = isLatest ? typedTitle : msg.title;
