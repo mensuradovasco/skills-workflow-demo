@@ -206,13 +206,22 @@ export function DemoApp() {
   }, []);
   const [isAutoPlaying, setIsAutoPlaying] = useState(false);
   const [isGuidedDemoActive, setIsGuidedDemoActive] = useState(() => readGuidedDemoPreference());
-  const [chatGuidedIndex, setChatGuidedIndex] = useState(1);
+  const [chatGuidedIndex, setChatGuidedIndex] = useState(0);
   const [guidedStepRequest, setGuidedStepRequest] = useState<number | null>(null);
   const [tourView, setTourView] = useState<TourView>(null);
   const [openJobKey, setOpenJobKey] = useState<JobKey | null>(null);
   useEffect(() => {
     setOpenJobKey(null);
   }, [activeStep, activeWorkspace]);
+  const hasEnteredFiredRef = useRef(false);
+  useEffect(() => {
+    if (!hasEntered || hasEnteredFiredRef.current) return;
+    hasEnteredFiredRef.current = true;
+    if (!isGuidedDemoActive) return;
+    setGuidedStepRequest(null);
+    window.setTimeout(() => setGuidedStepRequest(0), 0);
+    setChatGuidedIndex(0);
+  }, [hasEntered, isGuidedDemoActive]);
   const [activeGuidedStepId, setActiveGuidedStepId] = useState<string | null>(null);
   const [showDesignSystem, setShowDesignSystem] = useState(false);
   const [openRailGroup, setOpenRailGroup] = useState<string | null>(null);
