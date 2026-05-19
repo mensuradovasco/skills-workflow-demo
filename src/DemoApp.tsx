@@ -250,11 +250,12 @@ export function DemoApp() {
   useEffect(() => {
     if (!hasEntered || hasEnteredFiredRef.current) return;
     hasEnteredFiredRef.current = true;
-    if (!isGuidedDemoActive) return;
+    setIsGuidedDemoActive(true);
+    window.localStorage.setItem("skills-workflow-guided-demo-active", "true");
     setGuidedStepRequest(null);
     window.setTimeout(() => setGuidedStepRequest(0), 0);
     setChatGuidedIndex(0);
-  }, [hasEntered, isGuidedDemoActive]);
+  }, [hasEntered]);
   const [activeGuidedStepId, setActiveGuidedStepId] = useState<string | null>(null);
   const [showDesignSystem, setShowDesignSystem] = useState(false);
   const [openRailGroup, setOpenRailGroup] = useState<string | null>(null);
