@@ -198,21 +198,35 @@ export function DemoApp() {
     if (!el) return;
     const inIframe = window.self !== window.top;
     if (inIframe) {
-      const handleMessage = (e: MessageEvent) => {
-        if (e.data === "skills-demo-in-view") {
-          setHasEntered(true);
-          window.removeEventListener("message", handleMessage);
-          window.clearTimeout(timeoutId);
-        }
-      };
-      window.addEventListener("message", handleMessage);
-      const timeoutId = window.setTimeout(() => {
+      let fired = false;
+      const fire = () => {
+        if (fired) return;
+        fired = true;
         setHasEntered(true);
         window.removeEventListener("message", handleMessage);
-      }, 2500);
+        document.removeEventListener("pointerenter", handleInteraction);
+        document.removeEventListener("pointermove", handleInteraction);
+        document.removeEventListener("touchstart", handleInteraction);
+        document.removeEventListener("wheel", handleInteraction);
+        document.removeEventListener("click", handleInteraction);
+      };
+      const handleMessage = (e: MessageEvent) => {
+        if (e.data === "skills-demo-in-view") fire();
+      };
+      const handleInteraction = () => fire();
+      window.addEventListener("message", handleMessage);
+      document.addEventListener("pointerenter", handleInteraction, { once: true });
+      document.addEventListener("pointermove", handleInteraction, { once: true });
+      document.addEventListener("touchstart", handleInteraction, { once: true, passive: true });
+      document.addEventListener("wheel", handleInteraction, { once: true, passive: true });
+      document.addEventListener("click", handleInteraction, { once: true });
       return () => {
         window.removeEventListener("message", handleMessage);
-        window.clearTimeout(timeoutId);
+        document.removeEventListener("pointerenter", handleInteraction);
+        document.removeEventListener("pointermove", handleInteraction);
+        document.removeEventListener("touchstart", handleInteraction);
+        document.removeEventListener("wheel", handleInteraction);
+        document.removeEventListener("click", handleInteraction);
       };
     }
     if (!('IntersectionObserver' in window)) { setHasEntered(true); return; }
