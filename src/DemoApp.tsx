@@ -196,6 +196,25 @@ export function DemoApp() {
   useEffect(() => {
     const el = productLayoutRef.current;
     if (!el) return;
+    const inIframe = window.self !== window.top;
+    if (inIframe) {
+      const handleMessage = (e: MessageEvent) => {
+        if (e.data === "skills-demo-in-view") {
+          setHasEntered(true);
+          window.removeEventListener("message", handleMessage);
+          window.clearTimeout(timeoutId);
+        }
+      };
+      window.addEventListener("message", handleMessage);
+      const timeoutId = window.setTimeout(() => {
+        setHasEntered(true);
+        window.removeEventListener("message", handleMessage);
+      }, 2500);
+      return () => {
+        window.removeEventListener("message", handleMessage);
+        window.clearTimeout(timeoutId);
+      };
+    }
     if (!('IntersectionObserver' in window)) { setHasEntered(true); return; }
     const observer = new IntersectionObserver(
       ([entry]) => { if (entry.intersectionRatio >= 0.35) { setHasEntered(true); observer.disconnect(); } },
