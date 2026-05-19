@@ -98,7 +98,7 @@ button {
   --product-content-gutter: 10px;
   --assistant-inline-width: clamp(200px, calc(var(--demo-frame-width) * 0.25), 320px);
   --demo-horizontal-gutter: clamp(12px, 2.1vw, 34px);
-  --demo-frame-max-width: 950px;
+  --demo-frame-max-width: 1150px;
   --demo-frame-width: min(var(--demo-frame-max-width), calc(100vw - (var(--demo-horizontal-gutter) * 2)));
   --shell-mx: 0;
   --shell-my: 0;
@@ -987,7 +987,7 @@ button {
 }
 
 .app-shell.embed-mode.demo-only-mode {
-  --demo-platform-max-width: 950px;
+  --demo-platform-max-width: 1150px;
 }
 
 .embed-mode .hotspot-zone.top-right-action {
