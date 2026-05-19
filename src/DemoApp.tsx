@@ -198,8 +198,8 @@ export function DemoApp() {
     if (!el) return;
     if (!('IntersectionObserver' in window)) { setHasEntered(true); return; }
     const observer = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting) { setHasEntered(true); observer.disconnect(); } },
-      { threshold: 0.1 }
+      ([entry]) => { if (entry.intersectionRatio >= 0.35) { setHasEntered(true); observer.disconnect(); } },
+      { threshold: [0, 0.35, 0.5, 0.75] }
     );
     observer.observe(el);
     return () => observer.disconnect();
