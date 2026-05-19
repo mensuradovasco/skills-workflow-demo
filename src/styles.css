@@ -986,6 +986,10 @@ button {
   margin-top: 12px;
 }
 
+.app-shell.embed-mode.demo-only-mode {
+  --demo-platform-max-width: 950px;
+}
+
 .embed-mode .hotspot-zone.top-right-action {
   display: none;
 }
