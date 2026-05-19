@@ -202,13 +202,13 @@ export function DemoApp() {
       const fire = () => {
         if (fired) return;
         fired = true;
-        setHasEntered(true);
         window.removeEventListener("message", handleMessage);
         document.removeEventListener("pointerenter", handleInteraction);
         document.removeEventListener("pointermove", handleInteraction);
         document.removeEventListener("touchstart", handleInteraction);
         document.removeEventListener("wheel", handleInteraction);
         document.removeEventListener("click", handleInteraction);
+        window.setTimeout(() => setHasEntered(true), 180);
       };
       const handleMessage = (e: MessageEvent) => {
         if (e.data === "skills-demo-in-view") fire();
