@@ -567,7 +567,7 @@ export function DemoApp() {
           <div className={`assistant-sidecar${isChatOpen ? " is-open" : ""}${hasEntered ? " has-entered" : ""}`} aria-hidden={!isChatOpen}>
             {isChatOpen && (
               <AIDock
-                active={isGuidedDemoActive}
+                active={isGuidedDemoActive && hasEntered}
                 onActiveChange={setGuidedDemoActive}
                 onClosePanel={() => setIsChatOpen(false)}
                 onNavigate={navigateForGuidedDemo}
