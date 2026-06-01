@@ -367,7 +367,9 @@ export function AIDock({
       if (element) {
         if (!hasScrolledToStep.current) {
           hasScrolledToStep.current = true;
-          if (currentStep.spotlight !== false) {
+          // Skip the forced scroll on the first step (the entry animation). If the
+          // user scrolls past while it's animating, don't yank the page back.
+          if (currentStep.spotlight !== false && activeIndex !== 0) {
             const isDocumentHeaderTarget = !!element.closest(".document-header");
             element.scrollIntoView({
               block: "nearest",
