@@ -1885,7 +1885,7 @@ button {
 }
 
 .home-side {
-  grid-template-columns: minmax(220px, 0.86fr) minmax(250px, 1.14fr);
+  grid-template-columns: minmax(250px, 1.22fr) minmax(200px, 0.78fr);
   /* Row gap is 0 — each home-side component owns its own --section-gap top margin
    * so spacing stays consistent and travels with the component if reused. */
   gap: 0 20px;
@@ -1965,7 +1965,6 @@ button.task-row.is-navigable {
 }
 
 button.task-row.is-navigable:hover {
-  padding: 6px 8px;
   background: rgba(45, 115, 190, 0.06);
   border-radius: 6px;
 }
@@ -1993,6 +1992,13 @@ button.task-row.is-navigable:focus-visible {
   color: var(--brand-purple);
   font-size: 12px;
   font-weight: 600;
+}
+
+/* Pin every due-date badge to the right edge of its column so their right edges
+ * line up vertically down the list, regardless of the badge's text width. */
+.task-row .badge {
+  justify-self: end;
+  margin-right: 6px;
 }
 
 .task-thumb {
@@ -2331,7 +2337,7 @@ button.task-row.is-navigable:focus-visible {
 
 @media (max-width: 1280px) {
   .home-side {
-    grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+    grid-template-columns: minmax(0, 1.18fr) minmax(0, 0.82fr);
     gap: 0 20px;
   }
 }
