@@ -59,6 +59,7 @@ export function AIDock({
   const [typedTitle, setTypedTitle] = useState("");
   const [typedBody, setTypedBody] = useState("");
   const [isThinking, setIsThinking] = useState(false);
+  const [completed, setCompleted] = useState(false);
 
   // Always render as a side card, not a floating modal
   // Remove floating/overlay logic for this context
@@ -249,12 +250,32 @@ export function AIDock({
   const currentStep = steps[activeIndex] ?? steps[0];
 
   const restart = useCallback(() => {
+    setCompleted(false);
     setActiveIndex(0);
     window.localStorage.setItem(STORAGE_KEY, "0");
     onActiveChange(true);
     setCollapsed(false);
     if (steps[0]) onNavigate(steps[0].target);
   }, [onActiveChange, onNavigate, steps]);
+
+  // When the demo finishes, ask the visitor to book a call. If we're embedded
+  // on the marketing site, tell the parent page to scroll to the booking form;
+  // otherwise open the contact page directly.
+  const handleBookCall = useCallback(() => {
+    try {
+      if (window.parent && window.parent !== window) {
+        // Target the marketing site explicitly rather than "*" so the message
+        // is never delivered to an unexpected embedder.
+        ["https://www.skillsworkflow.com", "https://skillsworkflow.com"].forEach((origin) => {
+          window.parent.postMessage({ type: "skills-demo:book" }, origin);
+        });
+        return;
+      }
+    } catch {
+      /* cross-origin access can throw — fall through to the link */
+    }
+    window.open("https://www.skillsworkflow.com/contact/", "_blank", "noopener");
+  }, []);
 
   useEffect(() => {
     onRestartReady?.(restart);
@@ -436,6 +457,7 @@ export function AIDock({
     if (activeIndex >= steps.length - 1) {
       onActiveChange(false);
       window.localStorage.setItem(STORAGE_KEY, "0");
+      setCompleted(true);
       return;
     }
     goToStep(activeIndex + 1);
@@ -648,6 +670,8 @@ export function AIDock({
 
   // Render as a fixed side card (fills parent height/width)
   return (
+    <>
+    {completed && typeof document !== "undefined" && createPortal(<DemoConfetti />, document.body)}
     <aside className="ai-dock-sidecard" aria-label="Skills AI assistant">
       <section className="ai-dock-toast" style={{ height: "100%" }}>
         <header className="ai-dock-toast-head">
@@ -697,6 +721,14 @@ export function AIDock({
               </article>
             );
           })}
+          {completed && (
+            <article className="ai-dock-msg ai-dock-msg-complete">
+              <div className="ai-dock-msg-eyebrow">🎉 That's the full workflow!</div>
+              <p className="ai-dock-msg-body">
+                You've just seen Skills go from client brief all the way to billing — all in one place. Want to see what it looks like for your agency? Let's book a quick call.
+              </p>
+            </article>
+          )}
         </div>
         {active && currentStep ? (
           <div className="ai-dock-cta">
@@ -726,6 +758,15 @@ export function AIDock({
               {primaryLabel}
             </button>
           </div>
+        ) : completed ? (
+          <div className="ai-dock-cta">
+            <button className="ai-dock-ghost" onClick={restart} type="button">
+              Restart demo
+            </button>
+            <button className="ai-dock-primary" onClick={handleBookCall} type="button">
+              Book a 25-min call
+            </button>
+          </div>
         ) : (
           <div className="ai-dock-cta">
             <button className="ai-dock-primary" onClick={restart} type="button">
@@ -744,6 +785,127 @@ export function AIDock({
         </div>
       </section>
     </aside>
+    </>
+  );
+}
+
+// Lightweight canvas confetti — emoji + colored shapes raining down for a few
+// seconds when the guided demo completes. No external dependency.
+function DemoConfetti() {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const dpr = window.devicePixelRatio || 1;
+    let width = (canvas.width = window.innerWidth * dpr);
+    let height = (canvas.height = window.innerHeight * dpr);
+    canvas.style.width = window.innerWidth + "px";
+    canvas.style.height = window.innerHeight + "px";
+    ctx.scale(dpr, dpr);
+
+    const onResize = () => {
+      width = canvas.width = window.innerWidth * dpr;
+      height = canvas.height = window.innerHeight * dpr;
+      canvas.style.width = window.innerWidth + "px";
+      canvas.style.height = window.innerHeight + "px";
+      ctx.scale(dpr, dpr);
+    };
+    window.addEventListener("resize", onResize);
+
+    const W = () => window.innerWidth;
+    const H = () => window.innerHeight;
+    const colors = ["#2563eb", "#00b8d9", "#a891e6", "#f5c45a", "#6cd0c8", "#ff6b6b"];
+    const emojis = ["🎉", "🎊", "✨", "🥳"];
+
+    type Piece = {
+      x: number; y: number; vx: number; vy: number;
+      rot: number; vrot: number; size: number;
+      color: string; emoji: string | null;
+    };
+
+    const count = 160;
+    const pieces: Piece[] = [];
+    for (let i = 0; i < count; i++) {
+      const useEmoji = Math.random() < 0.28;
+      pieces.push({
+        x: Math.random() * W(),
+        y: -20 - Math.random() * H(),
+        vx: (Math.random() - 0.5) * 2.4,
+        vy: 2 + Math.random() * 3.5,
+        rot: Math.random() * Math.PI * 2,
+        vrot: (Math.random() - 0.5) * 0.3,
+        size: useEmoji ? 16 + Math.random() * 14 : 6 + Math.random() * 7,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        emoji: useEmoji ? emojis[Math.floor(Math.random() * emojis.length)] : null,
+      });
+    }
+
+    const start = performance.now();
+    const duration = 5200;
+    let raf = 0;
+
+    const frame = (now: number) => {
+      const elapsed = now - start;
+      ctx.clearRect(0, 0, width, height);
+      const fade = elapsed > duration - 1000 ? Math.max(0, (duration - elapsed) / 1000) : 1;
+
+      pieces.forEach((p) => {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.04;
+        p.rot += p.vrot;
+        if (p.y > H() + 30) {
+          p.y = -20;
+          p.x = Math.random() * W();
+          p.vy = 2 + Math.random() * 3.5;
+        }
+        ctx.save();
+        ctx.globalAlpha = fade;
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rot);
+        if (p.emoji) {
+          ctx.font = `${p.size}px serif`;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(p.emoji, 0, 0);
+        } else {
+          ctx.fillStyle = p.color;
+          ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
+        }
+        ctx.restore();
+      });
+
+      if (elapsed < duration) {
+        raf = requestAnimationFrame(frame);
+      } else {
+        ctx.clearRect(0, 0, width, height);
+      }
+    };
+    raf = requestAnimationFrame(frame);
+
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", onResize);
+    };
+  }, []);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      aria-hidden="true"
+      style={{
+        position: "fixed",
+        inset: 0,
+        width: "100%",
+        height: "100%",
+        pointerEvents: "none",
+        zIndex: 9999,
+      }}
+    />
   );
 }
 
